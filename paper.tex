@@ -1,0 +1,90 @@
+\documentclass{article}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx} % Required for inserting images
+
+\DeclareMathOperator{\Ima}{Im}
+
+\title{DP Unlearning}
+\author{daniel khen}
+\date{November 2024}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+\section{Definitions}
+
+\subsection{Differential privacy}
+
+Let $\varepsilon, \delta \in \mathbb{R_+}$ and let $\mathcal{A}$ be a randomized algorithm that takes a dataset as input.
+The algorithm $\mathcal{A}$ is said to provide $(\varepsilon, \delta)$-differential privacy if, for all datasets $\mathcal{D}$ and $\mathcal {D'}$ that differ on a single element and all subsets $\mathcal{R \in \Ima A}$:
+\[ \mathcal{\Pr[A(D) \in R]} \leq e^\varepsilon \mathcal{\Pr[A(D') \in R]} + \delta \]
+
+\subsection{Group privacy}
+
+Let $\varepsilon, \delta \in \mathbb{R_+}$ and $n \in \mathbb{N}$, let $\mathcal{A}$ be a randomized algorithm that takes a dataset as input.
+We say algorithm $\mathcal{A}$ provides $(\varepsilon, \delta, n)$-group privacy if, for all datasets $\mathcal{D}$ and $\mathcal {D'}$ that differ on $n$ elements and all subsets $\mathcal{R \in \Ima A}$:
+\[ \mathcal{\Pr[A(D) \in R]} \leq e^\varepsilon \mathcal{\Pr[A(D') \in R]} + \delta \]
+
+\subsubsection{Differential privacy versus group privacy}
+
+Group privacy will be more helpful with unlearning as unlearning is mostly performed on large forget sets rather then a single datapoint. Thus it will be helpful find a relationship between differential privacy and group privacy. A good intuition is to fine this relation is a series of datasets $\mathcal{D}_n$ such that for every $n \in \mathbb{N}$, $\mathcal{D}_n$ and $\mathcal{D}_{n+1}$ differ by one element. Assuming $\mathcal{A}$ provides $(\varepsilon, \delta)$-differential we get a Recurrence relation for $a_n = \Pr[\mathcal{A}(\mathcal{D}_n) \in R]$.
+
+\subsubsection{$(\varepsilon, \delta)$-differential privacy $\rightarrow$ $(n \varepsilon, \delta \dfrac{e^{n\varepsilon} - 1}{e^\varepsilon - 1}, n)$-group privacy}
+
+Proof is by induction, base case where $n = 1$, $(\varepsilon, \delta, 1)$-group privacy is the same as $(\varepsilon, \delta)$-differential privacy. 
+For the n-th case assuming $\mathcal{A}$ provides $(\varepsilon, \delta)$-differential privacy and $(n \varepsilon, \delta \dfrac{e^{n\varepsilon} - 1}{e^\varepsilon - 1}, n)$-group privacy. lets take three databases $\mathcal{D, D', D''}$ such that $\mathcal{D, D'}$ differ by $n$ elements and $\mathcal{D', D''}$ differ by one element (and $\mathcal{D, D''}$ differ by $n+1$ elements), then by group privacy:
+\[ \mathcal{\Pr[A(D) \in R]} \leq e^{n\varepsilon} \mathcal{\Pr[A(D') \in R]} + \delta \dfrac{e^{n\varepsilon} - 1}{e^\varepsilon - 1} \]
+And by differential privacy:
+\[ \mathcal{\Pr[A(D') \in R]} \leq e^\varepsilon \mathcal{\Pr[A(D'') \in R]} + \delta \]
+Which combines to:
+\[ \mathcal{\Pr[A(D) \in R]} \leq e^{n\varepsilon} (e^\varepsilon \mathcal{\Pr[A(D'') \in R]} + \delta) + \delta \dfrac{e^{n\varepsilon} - 1}{e^\varepsilon - 1} \]
+\[ = e^{(n+1)\varepsilon} \mathcal{\Pr[A(D') \in R]} + \delta \dfrac{e^{(n+1)\varepsilon} - 1}{e^\varepsilon - 1} \]
+Thus $\mathcal{D}$ provides $((n+1) \varepsilon, \delta \dfrac{e^{(n+1)\varepsilon} - 1}{e^\varepsilon - 1}, n+1)$-group privacy.
+
+\vspace{10mm}
+
+More interestingly, to achieve $(\varepsilon, \delta, n)$-group privacy we want $\mathcal{A}$ to provide $(\dfrac{\varepsilon}{n}, \delta \dfrac{e^\varepsilon - 1}{e^{n\varepsilon} - 1})$-differential privacy.
+
+\subsection{Unlearning}
+
+Let $\varepsilon, \delta \in \mathbb{R_+}$, let $\mathcal{A}$ be a randomized learning algorithm that takes a dataset as input and let $\mathcal{U}$ be a randomized unlearning algorithm that takes a model, a dataset and a forget set as input.
+The algorithm $\mathcal{U}$ is said to provide $(\varepsilon, \delta)$-unlearning with respect to the learning algorithm $\mathcal{A}$, the dataset $\mathcal{D}$, and the forget set $\mathcal{S \subseteq D}$ if, for all $\mathcal{R} \in \Ima \mathcal{A}$:
+\[ \mathcal{\Pr[A(D \setminus S) \in R]} \leq e^\varepsilon \mathcal{\Pr[U(A(D), D, S) \in R]} + \delta \]
+\[ \mathcal{\Pr[U(A(D), D, S) \in R]} \leq e^\varepsilon \mathcal{\Pr[A(D \setminus S) \in R]} + \delta \]
+
+\subsubsection{Unlearning for fine-tuning}
+
+Now let $\mathcal{A(M, D)}$ be a randomized fine-tuning algorithm that takes both a model and dataset as inputs (i.e. it starts training on a predefined model and weights), we will mark $\mathcal{A_M(D) = A(M, D)}$ a randomized learning algorithm and let U be a randomized unlearning algorithm that takes a model. The algorithm $\mathcal{U}$ is said to provide $(\varepsilon, \delta)$-unlearning with respect to $\mathcal{(A, D, S)}$ if for every model $\mathcal{M}$, $\mathcal{U}$ provides $(\varepsilon, \delta)$-unlearning with respect to $\mathcal{(A_M, D, S)}$.
+
+\subsubsection{Unlearning using differntial privacy}
+
+Let $\mathcal{B}$ be a randomized learning algorithm that provides $(\varepsilon, \delta, n)$-group privacy and let $\mathcal{U}$ be a randomized unlearning algorithm that provides $(\varepsilon', \delta')$-unlearning with respect to $\mathcal{(A, D, S)}$, where $\mathcal{B}$ is a randomized fine-tuning algorithm and $\mathcal{S \subseteq D}$ is a forget set such that $|\mathcal{S}| \leq n$.
+Then $\mathcal{U}$ provides $(\varepsilon + \varepsilon', \min(e^\varepsilon \delta' + \delta, e^{\varepsilon'} \delta + \delta'))$-unlearning with respect to $\mathcal{(C, D, S)}$, where $\mathcal{C}$ is a randomized learning algorithm given by $\mathcal{C(D) = A(B(D), D)}$.
+
+\[ \mathcal{\Pr[C(D \setminus S) \in R]} = \mathcal{\Pr[A(B(D \setminus S), D \setminus S) \in R]}\]
+
+Lets mark $\mathcal{R' = \{M | A(M, D \setminus S) \in R\}}$, then because of group privacy:
+
+\[ \mathcal{\Pr[C(D \setminus S) \in R]} = \mathcal{\Pr[B(D \setminus S) \in R']} \leq e^\varepsilon \mathcal{\Pr[B(D) \in R']} + \delta\]
+\[ \mathcal{\Pr[B(D) \in R']} \leq e^\varepsilon \mathcal{\Pr[C(D \setminus S) \in R]} + \delta\]
+
+Also:
+
+\[ \mathcal{\Pr[B(D) \in R']} = \mathcal{\Pr[A(B(D), (D \setminus S)) \in R]} = \mathcal{\Pr[A_{B(D)}(D \setminus S) \in R]}\]
+
+And since for every model $\mathcal{M}$, $\mathcal{U}$ provides $(\varepsilon, \delta)$-unlearning with respect to $\mathcal{(A_M, D, S)}$:
+
+\[ \mathcal{\Pr[B(D) \in R']} = \mathcal{\Pr[A_{B(D)}(D \setminus S) \in R]} \leq e^{\varepsilon'} \mathcal{\Pr[U(A_{B(D)}(D), D, S) \in R]} + \delta' \]
+\[ \mathcal{\Pr[U(C(D), D, S) \in R]} = \mathcal{\Pr[U(A_{B(D)}(D), D, S) \in R]} \leq e^{\varepsilon'} \mathcal{\Pr[B(D) \in R']} + \delta' \]
+
+Finally we get:
+
+\[ \mathcal{\Pr[C(D \setminus S) \in R]} \leq e^{\varepsilon + \varepsilon'} \mathcal{\Pr[U(C(D), D, S) \in R]} + e^\varepsilon \delta' + \delta \]
+\[ \mathcal{\Pr[U(C(D), D, S) \in R]} \leq e^{\varepsilon + \varepsilon'} \mathcal{\Pr[C(D \setminus S) \in R]} + e^{\varepsilon'} \delta + \delta' \]
+
+\end{document}

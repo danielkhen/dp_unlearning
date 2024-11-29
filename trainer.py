@@ -5,42 +5,65 @@ import static
 
 
 # Train model
-def train(model, train_loader, test_loader, criterion, optimizer, scheduler, weights_path, epochs=200, accumulation_steps=1, checkpoint_model=10):
+def train(model, train_loader, test_loader, criterion, optimizer, scheduler, weights_path, epochs=200, accumulation_steps=1, checkpoint_model=10, state_dict={}):
     training_start_time = time.time()
+    state_dict['epochs'] = []
+    state_dict['checkpoints'] = []
 
-    for epoch in range(1, epochs + 1):
+    for epoch in range(epochs):
         # Train for one epoch and calculate the average loss
         start_time = time.time()
-        epoch_loss = train_epoch(model, train_loader, criterion, optimizer, accumulation_steps)
+        epoch_loss, epoch_accuracy = train_epoch(model, train_loader, criterion, optimizer, accumulation_steps)
         end_time = time.time()
-        print(f"Epoch {epoch} finished with loss {epoch_loss} in {end_time - start_time} seconds")
+        print(f"Epoch {epoch} - Train loss: {epoch_loss}, Train accuracy: {epoch_accuracy} , Time: {int(end_time - start_time):.2f}s")
+
+        state_dict['epochs'].append({
+            'loss': epoch_loss,
+            'time': end_time - start_time,
+        })
 
         # Perform scheduler step
         scheduler.step()
         
         # Checkpoint model
-        if epoch % checkpoint_model == 0:
-            # Save model weights
-            torch.save(model.state_dict(), weights_path + '.checkpoint')
-
+        if (epoch + 1) % checkpoint_model == 0:
             # Output model statistics
             test_avg_loss, test_accuracy = tester.test(model, test_loader, criterion)
             print(f"Checkpoint model at epoch {epoch} with: \n" +
-                  f"Test loss: {test_avg_loss:.4f}, Test accuracy: {test_accuracy:.4f}")
+                  f"Test loss: {test_avg_loss}, Test accuracy: {test_accuracy:.2f}")
 
-    # Save model weights
-    torch.save(model.state_dict(), weights_path)
+            state_dict['checkpoints'].append({
+                'epoch': epoch,
+                'loss': test_avg_loss,
+                'accuracy': test_accuracy,
+            })
+
+            state_dict['model'] = model.state_dict()
+
+            # Save model weights
+            torch.save(state_dict, weights_path + '.checkpoint')
 
     # Output model statistics
     test_avg_loss, test_accuracy = tester.test(model, test_loader, criterion)
     training_end_time = time.time()
     print(f"Training finished in {training_end_time - training_start_time} seconds: \n" +
-          f"Test loss: {test_avg_loss:.4f}, Test accuracy: {test_accuracy:.4f}")
+          f"Test loss: {test_avg_loss}, Test accuracy: {test_accuracy:.2f}")
+    
+    state_dict['time'] = training_end_time - training_start_time
+    state_dict['loss'] = test_avg_loss
+    state_dict['accuracy'] = test_accuracy
+    state_dict['model'] = model.state_dict()
+    
+    # Save model weights
+    torch.save(state_dict, weights_path)
+
 
 
 # Train model for one epoch
 def train_epoch(model, train_loader, criterion, optimizer, accumulation_steps):
     running_loss = 0.0
+    correct_predictions = 0
+    total_predictions = 0
     model.train() # Set the model to training mode
 
     for batch_index, (inputs, labels) in enumerate(train_loader):
@@ -52,6 +75,11 @@ def train_epoch(model, train_loader, criterion, optimizer, accumulation_steps):
 
         # Compute predictions
         outputs = model(inputs)
+        _, predictions = torch.max(outputs.data, 1)
+
+        # Update the running total of correct predictions and samples
+        correct_predictions += (predictions == labels).sum().item()
+        total_predictions += labels.size(0)
 
         # Compute the loss and its gradients
         loss = criterion(outputs, labels)
@@ -62,5 +90,8 @@ def train_epoch(model, train_loader, criterion, optimizer, accumulation_steps):
         if (batch_index + 1) % accumulation_steps == 0:
             optimizer.step()
 
-    # Return average loss for the epoch
-    return running_loss / len(train_loader)
+    # Calculate the average loss and accuracy
+    avg_loss = running_loss / len(train_loader)
+    accuracy = 100 * correct_predictions / total_predictions
+
+    return avg_loss, accuracy

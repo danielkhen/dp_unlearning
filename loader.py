@@ -79,7 +79,9 @@ def model_factory(model_name, weights_path=None, fix_dp=True, pretrained=False):
         model = ModuleValidator.fix(model)
 
     if weights_path:
-        model.load_state_dict(torch.load(weights_path, weights_only=True))
+        state_dict = torch.load(weights_path, weights_only=True)
+        model.load_state_dict(state_dict['model'])
+        print(f"Loaded pretrained model with Test loss: {state_dict['loss']}, Test accuracy: {state_dict['accuracy']:.2f}")
 
     model.to(static.DEVICE)
 

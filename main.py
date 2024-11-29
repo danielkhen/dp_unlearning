@@ -23,8 +23,8 @@ def main():
     parser.add_argument('--test', '-t', action='store_true', help='wether to only test the loaded model')
 
     parser.add_argument('--weight-decay', default=5e-2, type=float, help='weight decay used in optimizer')
-    parser.add_argument('--num-workers', default=2, type=int, help='number of workers (dataset download)')
-    parser.add_argument('--checkpoint-model', default=5, type=int, help='number of epochs to checkpoint the model')
+    parser.add_argument('--num-workers', default=4, type=int, help='number of workers (dataset download)')
+    parser.add_argument('--checkpoint-model', default=10, type=int, help='number of epochs to checkpoint the model')
     parser.add_argument('--accumulation-steps', default=1, type=int, help='number of steps to accumulate gradients')
 
     parser.add_argument('--differential-privacy', '--dp', default=None, type=str, choices=('fastdp', 'opacus'), help='wether to train the model with differential privacy')
@@ -46,11 +46,6 @@ def main():
     model = loader.model_factory(args.model, weights_path=args.input_weights, fix_dp=True, pretrained=args.pretrained)
 
     criterion =  nn.CrossEntropyLoss()
-
-    if args.input_weights or args.pretrained:
-        test_avg_loss, test_accuracy = tester.test(model, test_loader, criterion)
-        print(f"Loaded pretrained model with: \n" +
-                f"Test loss: {test_avg_loss:.4f}, Test accuracy: {test_accuracy:.4f}")
         
     if args.test:
         return
@@ -104,7 +99,7 @@ def main():
             )
 
     trainer.train(model, train_loader, test_loader, criterion, optimizer, scheduler, args.output,
-                epochs=args.epochs, accumulation_steps=args.accumulation_steps, checkpoint_model=args.checkpoint_model)
+                epochs=args.epochs, accumulation_steps=args.accumulation_steps, checkpoint_model=args.checkpoint_model, state_dict={'args': args})
 
 if __name__ == "__main__":
     main()
