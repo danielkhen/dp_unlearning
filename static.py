@@ -7,7 +7,8 @@ import timm
 from timm.models.vision_transformer import VisionTransformer
 from torchvision import transforms
 
-DEVICE = torch.device("cuda")
+
+DEVICE = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
 # Loader parameters
 BATCH_SIZE = 128
@@ -36,7 +37,7 @@ TESTSET_SIZE = 10000
 DATASET_MEAN = (0.4914, 0.4822, 0.4465)
 DATASET_STD = (0.2023, 0.1994, 0.2010)
 
-DA_TRANSFORM = transforms.Compose([
+AUGMENTATION_TRANSFORM = transforms.Compose([
         transforms.RandomCrop(32, padding=4),
         transforms.RandomHorizontalFlip(),
         transforms.AutoAugment(transforms.AutoAugmentPolicy.CIFAR10),
@@ -50,7 +51,7 @@ TRANSFORM = transforms.Compose([
 ])
 
 # Training parameters
-LR = 3e-4
+LR = 3e-5
 MAX_EPOCHS = 100
 MIN_DELTA = 1e-5
 PATIENCE = 300

@@ -1,62 +1,51 @@
 import torch
-import os
+import time
 import tester
+import static
 
 
 # Train model
-def train(model_name, model, train_loader, test_loader, criterion, optimizer, scheduler, device, max_epochs=200, accumulation_steps=1, min_delta=1e-5, patience=5, checkpoint_every=5):
-    epoch_loss = float('inf')
-    stop_counter = 0
-    epoch = 0
+def train(model, train_loader, test_loader, criterion, optimizer, scheduler, weights_path, epochs=200, accumulation_steps=1, checkpoint_model=10):
+    training_start_time = time.time()
 
-    os.makedirs(f'checkpoints/{model_name}', exist_ok=True)
-    
-    for epoch in range(1, max_epochs + 1):
+    for epoch in range(1, epochs + 1):
         # Train for one epoch and calculate the average loss
-        previous_loss, epoch_loss = epoch_loss, train_epoch(model, train_loader, criterion, optimizer, device, accumulation_steps)
-        print(f"Epoch {epoch} finished with loss {epoch_loss}")
+        start_time = time.time()
+        epoch_loss = train_epoch(model, train_loader, criterion, optimizer, accumulation_steps)
+        end_time = time.time()
+        print(f"Epoch {epoch} finished with loss {epoch_loss} in {end_time - start_time} seconds")
 
         # Perform scheduler step
         scheduler.step()
-
-        # Check improvement in loss
-        if abs(previous_loss - epoch_loss) < min_delta:
-            stop_counter += 1
-        else: # Reset counter if there's significant improvement
-            stop_counter = 0
-
-        # Stop training if no improvement for 'patience' epochs
-        if stop_counter >= patience:
-            print(f"Stopping early at epoch {epoch}")
-            break
         
         # Checkpoint model
-        if epoch % checkpoint_every == 0:
+        if epoch % checkpoint_model == 0:
             # Save model weights
-            torch.save(model.state_dict(), f"checkpoints/{model_name}/epoch{epoch}.pth")
+            torch.save(model.state_dict(), weights_path + '.checkpoint')
 
             # Output model statistics
-            test_avg_loss, test_accuracy = tester.test(model, test_loader, criterion, device)
+            test_avg_loss, test_accuracy = tester.test(model, test_loader, criterion)
             print(f"Checkpoint model at epoch {epoch} with: \n" +
                   f"Test loss: {test_avg_loss:.4f}, Test accuracy: {test_accuracy:.4f}")
 
     # Save model weights
-    torch.save(model.state_dict(), f"weights/{model_name}.pth")
+    torch.save(model.state_dict(), weights_path)
 
     # Output model statistics
-    test_avg_loss, test_accuracy = tester.test(model, test_loader, criterion, device)
-    print(f"Training finished after {epoch} epochs: \n" +
+    test_avg_loss, test_accuracy = tester.test(model, test_loader, criterion)
+    training_end_time = time.time()
+    print(f"Training finished in {training_end_time - training_start_time} seconds: \n" +
           f"Test loss: {test_avg_loss:.4f}, Test accuracy: {test_accuracy:.4f}")
 
 
 # Train model for one epoch
-def train_epoch(model, train_loader, criterion, optimizer, device, accumulation_steps):
+def train_epoch(model, train_loader, criterion, optimizer, accumulation_steps):
     running_loss = 0.0
     model.train() # Set the model to training mode
 
     for batch_index, (inputs, labels) in enumerate(train_loader):
         # Move inputs and labels to the specified device
-        inputs, labels = inputs.to(device), labels.to(device)
+        inputs, labels = inputs.to(static.DEVICE), labels.to(static.DEVICE)
         
         # Zero gradients
         optimizer.zero_grad()

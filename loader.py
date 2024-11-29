@@ -1,37 +1,86 @@
-import torch
-import os
 import static
+import torch
+import timm
 import copy
 
-from torch.backends import cudnn
+from timm.models.vision_transformer import VisionTransformer
 from torch.utils.data import DataLoader
 from torchvision import datasets
 from opacus.validators import ModuleValidator
+from torch.nn import LayerNorm
 
-def load_dataset(dataset, dataset_transform, test_transform):
+def load_dataset(dataset, dataset_transform, testset_transform, batch_size, num_workers):
     dataset = getattr(datasets, dataset)
 
     # Download dataset if not already downloaded
-    trainset = datasets.CIFAR10(root='./data', train=True, download=True, transform=dataset_transform)
-    testset = datasets.CIFAR10(root='./data', train=False, download=True, transform=test_transform)
+    trainset = dataset(root='./data', train=True, download=True, transform=dataset_transform)
+    testset = dataset(root='./data', train=False, download=True, transform=testset_transform)
 
     # Load dataset
-    trainloader = DataLoader(trainset, batch_size=static.BATCH_SIZE, num_workers=static.NUM_WORKERS, shuffle=True)
-    testloader = DataLoader(testset, batch_size=static.BATCH_SIZE, num_workers=static.NUM_WORKERS, shuffle=False)
+    trainloader = DataLoader(trainset, batch_size=batch_size, num_workers=num_workers, shuffle=True)
+    testloader = DataLoader(testset, batch_size=batch_size, num_workers=num_workers, shuffle=False)
 
     return trainloader, testloader
 
-def load_model(base_model, device = None, weights_from = None, fix_dp = True):
-    # Define the model
-    model = copy.deepcopy(base_model)
-    
+def model_factory(model_name, weights_path=None, fix_dp=True, pretrained=False):
+    match model_name:
+        case 'vit-tiny':
+            model = VisionTransformer(
+                img_size=32, 
+                patch_size=4,
+                embed_dim=192,
+                depth=12, 
+                num_heads=3, 
+                mlp_ratio=4,
+                num_classes=10,
+                qkv_bias=True,
+                norm_layer=LayerNorm
+            )
+        case 'vit-small':
+            model = VisionTransformer(
+                img_size=32, 
+                patch_size=4,
+                embed_dim=384,
+                depth=12, 
+                num_heads=6, 
+                mlp_ratio=4,
+                num_classes=10,
+                qkv_bias=True,
+                norm_layer=LayerNorm
+            )
+        case 'vit-base':
+            model = VisionTransformer(
+                img_size=32, 
+                patch_size=4,
+                embed_dim=768,
+                depth=12, 
+                num_heads=12, 
+                mlp_ratio=4,
+                num_classes=10,
+                qkv_bias=True,
+                norm_layer=LayerNorm
+            )
+        case _:
+            model = timm.create_model(model_name)
+
+    if model_name in ('vit-base', 'vit-small', 'vit-tiny') and pretrained: # Load pretrained manually
+        timm_name = model_name.replace('-', '_') + '_patch16_224'
+        timm_model = timm.create_model(timm_name, pretrained=True)
+        timm_state_dict = timm_model.state_dict()
+
+        for param in ('pos_embed', 'patch_embed.proj.weight', 'patch_embed.proj.bias','head.weight', 'head.bias'):
+            del timm_state_dict[param]
+
+        state_dict = model.state_dict()
+        state_dict.update(timm_state_dict)
+        model.load_state_dict(state_dict)
+
     if fix_dp:
-        model = ModuleValidator.fix(model) # This replaces BatchNorm with GroupNorm
+        model = ModuleValidator.fix(model)
 
-    if device: # Move to device if specified
-        model.to(device)
+    if weights_path:
+        model.load_state_dict(torch.load(weights_path, weights_only=True))
 
-    if weights_from and os.path.exists(weights_from): # Load pre-trained weights if specified
-        model.load_state_dict(torch.load(weights_from, weights_only=True))
+    model.to(static.DEVICE)
 
     return model
