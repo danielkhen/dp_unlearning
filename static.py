@@ -19,20 +19,21 @@ TESTSET_SIZE = 10000
 DATASET_MEAN = (0.4914, 0.4822, 0.4465)
 DATASET_STD = (0.2023, 0.1994, 0.2010)
 
-AUGMENTATIONS = [
+AUGMENTATIONS = (
         transforms.RandomCrop(32, padding=4),
         transforms.RandomHorizontalFlip(),
-]
+        transforms.AutoAugment(transforms.AutoAugmentPolicy.CIFAR10),
+)
 
-DP_AUGMENTATIONS = [
-        transforms.RandomHorizontalFlip(p=1),
-]
-
-NORMALIZATIONS = [
+NORMALIZATIONS = (
         transforms.ToTensor(),
         transforms.Normalize(DATASET_MEAN, DATASET_STD)
-]
+)
+
+DP_AUGMENTATIONS = (
+        transforms.RandomHorizontalFlip(p=1),
+)
 
 AUGMENTATION_TRANSFORM = transforms.Compose(AUGMENTATIONS + NORMALIZATIONS)
 TRANSFORM = transforms.Compose(NORMALIZATIONS)
-DP_TRANSFORMS = [transforms.Compose(subset) for subset in powerset(DP_AUGMENTATIONS)]
+DP_TRANSFORMS = [transforms.Compose(subset + (transforms.Normalize(DATASET_MEAN, DATASET_STD),)) for subset in powerset(DP_AUGMENTATIONS)]

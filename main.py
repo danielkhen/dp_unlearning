@@ -2,10 +2,10 @@ import argparse
 import loader
 import static
 import trainer
-import tester
 import fine_tuning
 
 from torch import nn, optim
+from torchvision import transforms
 
 def main():
     parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
@@ -40,9 +40,14 @@ def main():
 
     args = parser.parse_args()
 
-    train_loader_transform = static.AUGMENTATION_TRANSFORM if args.data_augmentation and not args.differential_privacy else static.TRANSFORM
+    if args.data_augmentation and args.differential_privacy != 'opacus':
+        loader_transform = transforms.Compose(static.AUGMENTATIONS + static.NORMALIZATIONS)
+    elif args.data_augmentation and args.differential_privacy == 'opacus':
+        loader_transform = transforms.Compose([transforms.ToTensor()])
+    else:
+        loader_transform = transforms.Compose(static.NORMALIZATIONS)
 
-    train_loader, test_loader = loader.load_dataset(static.DATASET_NAME, train_loader_transform, static.TRANSFORM, args.batch_size, args.num_workers)
+    train_loader, test_loader = loader.load_dataset(static.DATASET_NAME, loader_transform, transforms.Compose(static.NORMALIZATIONS), args.batch_size, args.num_workers)
 
     model = loader.model_factory(args.model, weights_path=args.input_weights, fix_dp=True, pretrained=args.pretrained)
 
@@ -97,7 +102,7 @@ def main():
                 poisson_sampling=False
             )
 
-    dp_transforms = static.DP_TRANSFORMS if args.differential_privacy and args.data_augmentation else None
+    dp_transforms = static.DP_TRANSFORMS if args.differential_privacy == 'opacus' and args.data_augmentation else None
 
     trainer.train(model, train_loader, test_loader, criterion, optimizer, scheduler, args.output,
                 epochs=args.epochs, checkpoint_model=args.checkpoint_model, state_dict={'args': args}, dp_transforms=dp_transforms, use_scheduler=not args.disable_lr_scheduler)

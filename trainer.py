@@ -15,7 +15,7 @@ def train(model, train_loader, test_loader, criterion, optimizer, scheduler, wei
         start_time = time.time()
         epoch_loss, epoch_accuracy = train_epoch_dp(model, train_loader, criterion, optimizer, dp_transforms) if dp_transforms else train_epoch(model, train_loader, criterion, optimizer)
         end_time = time.time()
-        print(f"Epoch {epoch} - Train loss: {epoch_loss}, Train accuracy: {epoch_accuracy} , Time: {int(end_time - start_time):.2f}s")
+        print(f"Epoch {epoch} - Train loss: {epoch_loss}, Train accuracy: {epoch_accuracy} , Time: {(end_time - start_time):.2f}s")
 
         state_dict['epochs'].append({
             'loss': epoch_loss,
@@ -137,7 +137,7 @@ def train_epoch_dp(model, train_loader, criterion, optimizer, transforms):
         for param in model.parameters():
             param.grad_sample = param.grad_sample_sum / len(transforms)
         
-        # Adjust learning weights
+        # Adjust learning weights, optimizer should clip already averaged grad samples
         optimizer.step()
 
     # Calculate the average loss and accuracy
