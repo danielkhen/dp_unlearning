@@ -5,7 +5,7 @@ import static
 
 
 # Train model
-def train(model, train_loader, test_loader, criterion, optimizer, scheduler, weights_path, epochs=200, checkpoint_model=10, state_dict={}, dp_transforms=None):
+def train(model, train_loader, test_loader, criterion, optimizer, scheduler, weights_path, epochs=200, checkpoint_model=10, state_dict={}, dp_transforms=None, use_scheduler=True):
     training_start_time = time.time()
     state_dict['epochs'] = []
     state_dict['checkpoints'] = []
@@ -23,7 +23,8 @@ def train(model, train_loader, test_loader, criterion, optimizer, scheduler, wei
         })
 
         # Perform scheduler step
-        scheduler.step()
+        if use_scheduler:
+            scheduler.step()
         
         # Checkpoint model
         if (epoch + 1) % checkpoint_model == 0:

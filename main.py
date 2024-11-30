@@ -20,6 +20,7 @@ def main():
     parser.add_argument('--epochs', '-e', default=200, type=int, help='number of epochs')
     parser.add_argument('--optimizer', '-o', default='AdamW', type=str, help='optimizer to use from torch.nn.optim')
     parser.add_argument('--input-weights', '-i', default=None, type=str, help='path of pth file for pre-trained weights')
+    parser.add_argument('--disable-lr-scheduler', action='store_true', help='disable the learning rate cosine anealing scheduler')
 
     parser.add_argument('--weight-decay', default=5e-2, type=float, help='weight decay used in optimizer')
     parser.add_argument('--num-workers', default=4, type=int, help='number of workers (dataset download)')
@@ -62,7 +63,7 @@ def main():
 
     optimizer_class = getattr(optim, args.optimizer)
     optimizer = optimizer_class(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
-
+    
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
 
     match args.differential_privacy:
@@ -99,7 +100,7 @@ def main():
     dp_transforms = static.DP_TRANSFORMS if args.differential_privacy and args.data_augmentation else None
 
     trainer.train(model, train_loader, test_loader, criterion, optimizer, scheduler, args.output,
-                epochs=args.epochs, checkpoint_model=args.checkpoint_model, state_dict={'args': args}, dp_transforms=dp_transforms)
+                epochs=args.epochs, checkpoint_model=args.checkpoint_model, state_dict={'args': args}, dp_transforms=dp_transforms, use_scheduler=not args.disable_lr_scheduler)
 
 if __name__ == "__main__":
     main()
