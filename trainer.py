@@ -79,12 +79,12 @@ def train_epoch(model, train_loader, criterion, optimizer):
         _, predictions = torch.max(outputs.data, 1)
 
         # Update the running total of correct predictions and samples
-        correct_predictions = (predictions == labels).sum().item()
-        total_predictions = labels.size(0)
+        correct_predictions += (predictions == labels).sum().item()
+        total_predictions += labels.size(0)
 
         # Compute the loss and its gradients
         loss = criterion(outputs, labels)
-        running_loss = loss.item()
+        running_loss += loss.item()
         loss.backward()
 
         # Adjust learning weights
@@ -123,12 +123,12 @@ def train_epoch_dp(model, train_loader, criterion, optimizer, transforms):
             _, predictions = torch.max(outputs.data, 1)
 
             # Update the running total of correct predictions and samples
-            correct_predictions = (predictions == labels).sum().item()
-            total_predictions = labels.size(0)
+            correct_predictions += (predictions == labels).sum().item()
+            total_predictions += labels.size(0)
 
             # Compute the loss and its gradients
             loss = criterion(outputs, labels)
-            running_loss = loss.item()
+            running_loss += loss.item()
             loss.backward()
 
             param.grad_sample_sum += param.grad_sample
