@@ -25,7 +25,6 @@ AUGMENTATIONS = [
 ]
 
 DP_AUGMENTATIONS = [
-        transforms.RandomCrop(32, padding=4),
         transforms.RandomHorizontalFlip(p=1),
 ]
 
