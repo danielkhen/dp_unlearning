@@ -1,7 +1,6 @@
 import static
 import torch
 import timm
-import copy
 
 from timm.models.vision_transformer import VisionTransformer
 from torch.utils.data import DataLoader
@@ -26,42 +25,42 @@ def model_factory(model_name, weights_path=None, fix_dp=True, pretrained=False):
     match model_name:
         case 'vit-tiny':
             model = VisionTransformer(
-                img_size=32, 
+                img_size=static.IMG_SIZE, 
                 patch_size=4,
                 embed_dim=192,
                 depth=12, 
                 num_heads=3, 
                 mlp_ratio=4,
-                num_classes=10,
+                num_classes=static.CLASSES_NUM,
                 qkv_bias=True,
                 norm_layer=LayerNorm
             )
         case 'vit-small':
             model = VisionTransformer(
-                img_size=32, 
+                img_size=static.IMG_SIZE, 
                 patch_size=4,
                 embed_dim=384,
                 depth=12, 
                 num_heads=6, 
                 mlp_ratio=4,
-                num_classes=10,
+                num_classes=static.CLASSES_NUM,
                 qkv_bias=True,
                 norm_layer=LayerNorm
             )
         case 'vit-base':
             model = VisionTransformer(
-                img_size=32, 
+                img_size=static.IMG_SIZE, 
                 patch_size=4,
                 embed_dim=768,
                 depth=12, 
                 num_heads=12, 
                 mlp_ratio=4,
-                num_classes=10,
+                num_classes=static.CLASSES_NUM,
                 qkv_bias=True,
                 norm_layer=LayerNorm
             )
         case _:
-            model = timm.create_model(model_name)
+            model = timm.create_model(model_name, num_classes=10, pretrained=pretrained)
 
     if model_name in ('vit-base', 'vit-small', 'vit-tiny') and pretrained: # Load pretrained manually
         timm_name = model_name.replace('-', '_') + '_patch16_224'
@@ -76,7 +75,7 @@ def model_factory(model_name, weights_path=None, fix_dp=True, pretrained=False):
         model.load_state_dict(state_dict)
 
     if fix_dp:
-        model = ModuleValidator.fix(model)
+        model = ModuleValidator.fix(model, num_groups=16)
 
     if weights_path:
         state_dict = torch.load(weights_path, weights_only=True)

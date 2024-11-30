@@ -14,23 +14,21 @@ def main():
     parser.add_argument('output', type=str, help='path of pth file to save model weights to')
 
     parser.add_argument('--learning-rate', '--lr', default=3e-4, type=float, help='learning rate')
-    parser.add_argument('--batch-size', '--bs', default=128, type=bool, help='batch size')
+    parser.add_argument('--batch-size', '--bs', default=128, type=int, help='batch size')
     parser.add_argument('--data-augmentation', '--da', action='store_true', help='data augmentation')
     parser.add_argument('--pretrained', '-p', action='store_true', help='wether model comes with pre-trained weights')
     parser.add_argument('--epochs', '-e', default=200, type=int, help='number of epochs')
     parser.add_argument('--optimizer', '-o', default='AdamW', type=str, help='optimizer to use from torch.nn.optim')
     parser.add_argument('--input-weights', '-i', default=None, type=str, help='path of pth file for pre-trained weights')
-    parser.add_argument('--test', '-t', action='store_true', help='wether to only test the loaded model')
 
     parser.add_argument('--weight-decay', default=5e-2, type=float, help='weight decay used in optimizer')
     parser.add_argument('--num-workers', default=4, type=int, help='number of workers (dataset download)')
     parser.add_argument('--checkpoint-model', default=10, type=int, help='number of epochs to checkpoint the model')
-    parser.add_argument('--accumulation-steps', default=1, type=int, help='number of steps to accumulate gradients')
 
     parser.add_argument('--differential-privacy', '--dp', default=None, type=str, choices=('fastdp', 'opacus'), help='wether to train the model with differential privacy')
-    parser.add_argument('--epsilon', default=50.0, type=float, help='epsilon for differential privacy')
+    parser.add_argument('--epsilon', default=8.0, type=float, help='epsilon for differential privacy')
     parser.add_argument('--delta', default=1e-5, type=float, help='delta for differential privacy')
-    parser.add_argument('--max-grad-norm', default=1.2, type=float, help='maximum gradient norm for differential privacy')
+    parser.add_argument('--max-grad-norm', default=1.0, type=float, help='maximum gradient norm for differential privacy')
 
     parser.add_argument('--peft', default=None, type=str, choices=('lora', 'prune', 'prune-grads'), help='the peft method to use, either lora, prune or prune-grads')
     parser.add_argument('--peft-targets', nargs='*', type=str, help='list of target model children to apply peft on')
@@ -41,14 +39,13 @@ def main():
 
     args = parser.parse_args()
 
-    train_loader, test_loader = loader.load_dataset(static.DATASET_NAME, static.AUGMENTATION_TRANSFORM if args.data_augmentation else static.TRANSFORM, static.TRANSFORM, args.batch_size, args.num_workers)
+    train_loader_transform = static.AUGMENTATION_TRANSFORM if args.data_augmentation and not args.differential_privacy else static.TRANSFORM
+
+    train_loader, test_loader = loader.load_dataset(static.DATASET_NAME, train_loader_transform, static.TRANSFORM, args.batch_size, args.num_workers)
 
     model = loader.model_factory(args.model, weights_path=args.input_weights, fix_dp=True, pretrained=args.pretrained)
 
     criterion =  nn.CrossEntropyLoss()
-        
-    if args.test:
-        return
 
     if args.peft:
         trainable_parameters = 0
@@ -95,11 +92,14 @@ def main():
                 epochs=args.epochs,
                 target_epsilon=args.epsilon,
                 target_delta=args.delta,
-                max_grad_norm=args.max_grad_norm
+                max_grad_norm=args.max_grad_norm,
+                poisson_sampling=False
             )
 
+    dp_transforms = static.DP_TRANSFORMS if args.differential_privacy and args.data_augmentation else None
+
     trainer.train(model, train_loader, test_loader, criterion, optimizer, scheduler, args.output,
-                epochs=args.epochs, accumulation_steps=args.accumulation_steps, checkpoint_model=args.checkpoint_model, state_dict={'args': args})
+                epochs=args.epochs, checkpoint_model=args.checkpoint_model, state_dict={'args': args}, dp_transforms=dp_transforms)
 
 if __name__ == "__main__":
     main()

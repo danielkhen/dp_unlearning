@@ -5,7 +5,7 @@ import static
 
 
 # Train model
-def train(model, train_loader, test_loader, criterion, optimizer, scheduler, weights_path, epochs=200, accumulation_steps=1, checkpoint_model=10, state_dict={}):
+def train(model, train_loader, test_loader, criterion, optimizer, scheduler, weights_path, epochs=200, checkpoint_model=10, state_dict={}, dp_transforms=None):
     training_start_time = time.time()
     state_dict['epochs'] = []
     state_dict['checkpoints'] = []
@@ -13,7 +13,7 @@ def train(model, train_loader, test_loader, criterion, optimizer, scheduler, wei
     for epoch in range(epochs):
         # Train for one epoch and calculate the average loss
         start_time = time.time()
-        epoch_loss, epoch_accuracy = train_epoch(model, train_loader, criterion, optimizer, accumulation_steps)
+        epoch_loss, epoch_accuracy = train_epoch_dp(model, train_loader, criterion, optimizer, dp_transforms) if dp_transforms else train_epoch(model, train_loader, criterion, optimizer)
         end_time = time.time()
         print(f"Epoch {epoch} - Train loss: {epoch_loss}, Train accuracy: {epoch_accuracy} , Time: {int(end_time - start_time):.2f}s")
 
@@ -60,16 +60,16 @@ def train(model, train_loader, test_loader, criterion, optimizer, scheduler, wei
 
 
 # Train model for one epoch
-def train_epoch(model, train_loader, criterion, optimizer, accumulation_steps):
+def train_epoch(model, train_loader, criterion, optimizer):
     running_loss = 0.0
     correct_predictions = 0
     total_predictions = 0
     model.train() # Set the model to training mode
 
-    for batch_index, (inputs, labels) in enumerate(train_loader):
+    for inputs, labels in train_loader:
         # Move inputs and labels to the specified device
         inputs, labels = inputs.to(static.DEVICE), labels.to(static.DEVICE)
-        
+
         # Zero gradients
         optimizer.zero_grad()
 
@@ -78,20 +78,63 @@ def train_epoch(model, train_loader, criterion, optimizer, accumulation_steps):
         _, predictions = torch.max(outputs.data, 1)
 
         # Update the running total of correct predictions and samples
-        correct_predictions += (predictions == labels).sum().item()
-        total_predictions += labels.size(0)
+        correct_predictions = (predictions == labels).sum().item()
+        total_predictions = labels.size(0)
 
         # Compute the loss and its gradients
         loss = criterion(outputs, labels)
-        running_loss += loss.item()
+        running_loss = loss.item()
         loss.backward()
 
         # Adjust learning weights
-        if (batch_index + 1) % accumulation_steps == 0:
-            optimizer.step()
+        optimizer.step()
 
     # Calculate the average loss and accuracy
     avg_loss = running_loss / len(train_loader)
+    accuracy = 100 * correct_predictions / total_predictions
+
+    return avg_loss, accuracy
+
+# Train model for one epoch with differntial privacy augmentations
+def train_epoch_dp(model, train_loader, criterion, optimizer, transforms):
+    running_loss = 0.0
+    correct_predictions = 0
+    total_predictions = 0
+    model.train() # Set the model to training mode
+
+    for inputs, labels in train_loader:
+        # Move inputs and labels to the specified device
+        inputs, labels = inputs.to(static.DEVICE), labels.to(static.DEVICE)
+
+        # Zero gradients
+        optimizer.zero_grad()
+        
+        for transform in transforms:
+            # Apply transform
+            augmented_inputs = transform(inputs).to(static.DEVICE)
+
+            # Compute predictions
+            outputs = model(augmented_inputs)
+            _, predictions = torch.max(outputs.data, 1)
+
+            # Update the running total of correct predictions and samples
+            correct_predictions = (predictions == labels).sum().item()
+            total_predictions = labels.size(0)
+
+            # Compute the loss and its gradients
+            loss = criterion(outputs, labels)
+            running_loss = loss.item()
+            loss.backward()
+
+        # Average the gradients over all augmentations
+        for param in model.parameters():
+            param.grad_sample = torch.mean(torch.stack(param.grad_sample), dim=0)
+        
+        # Adjust learning weights
+        optimizer.step()
+
+    # Calculate the average loss and accuracy
+    avg_loss = running_loss / (len(train_loader) * len(transforms))
     accuracy = 100 * correct_predictions / total_predictions
 
     return avg_loss, accuracy
