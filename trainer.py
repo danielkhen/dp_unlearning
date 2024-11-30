@@ -107,12 +107,16 @@ def train_epoch_dp(model, train_loader, criterion, optimizer, transforms):
         # Move inputs and labels to the specified device
         inputs, labels = inputs.to(static.DEVICE), labels.to(static.DEVICE)
 
-        # Zero gradients
-        optimizer.zero_grad()
+        # Initialize per gradient sample sum
+        for param in model.parameters():
+            param.grad_sample_sum = torch.zeros((inputs.size()[0], ) + param.size(), device=static.DEVICE) # Expand in batch size
         
         for transform in transforms:
+            # Zero gradients
+            optimizer.zero_grad()
+
             # Apply transform
-            augmented_inputs = transform(inputs).to(static.DEVICE)
+            augmented_inputs = transform(inputs)
 
             # Compute predictions
             outputs = model(augmented_inputs)
@@ -127,9 +131,11 @@ def train_epoch_dp(model, train_loader, criterion, optimizer, transforms):
             running_loss = loss.item()
             loss.backward()
 
+            param.grad_sample_sum += param.grad_sample
+
         # Average the gradients over all augmentations
         for param in model.parameters():
-            param.grad_sample = torch.mean(torch.stack(param.grad_sample), dim=0)
+            param.grad_sample = param.grad_sample_sum / len(transforms)
         
         # Adjust learning weights
         optimizer.step()
