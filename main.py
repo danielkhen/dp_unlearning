@@ -44,8 +44,8 @@ def main():
     args = parser.parse_args()
     
 
-    dataset_transform = transforms.Compose(static.AUGMENTATIONS + static.NORMALIZATIONS) if args.differential_privacy else transforms.Compose(static.NORMALIZATIONS)
     testset_transform = transforms.Compose(static.NORMALIZATIONS)
+    dataset_transform = transforms.Compose(static.AUGMENTATIONS + static.NORMALIZATIONS) if args.differential_privacy or args.augmentation_multiplicity != 1 else testset_transform
 
     train_loader, test_loader = loader.load_dataset(static.DATASET_NAME, dataset_transform, testset_transform, args.batch_size, args.num_workers, 
                                                     augmentation_multiplicity=args.augmentation_multiplicity)
