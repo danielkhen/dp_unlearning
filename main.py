@@ -3,6 +3,7 @@ import loader
 import static
 import trainer
 import fine_tuning
+import torch
 
 from torch import nn, optim
 from torchvision import transforms
@@ -17,16 +18,18 @@ def main():
     parser.add_argument('--batch-size', '--bs', default=128, type=int, help='batch size')
     parser.add_argument('--data-augmentation', '--da', action='store_true', help='data augmentation')
     parser.add_argument('--pretrained', '-p', action='store_true', help='wether model comes with pre-trained weights')
-    parser.add_argument('--epochs', '-e', default=200, type=int, help='number of epochs')
-    parser.add_argument('--optimizer', '-o', default='AdamW', type=str, help='optimizer to use from torch.nn.optim')
+    parser.add_argument('--epochs', '-e', default=300, type=int, help='number of epochs')
+    parser.add_argument('--optimizer', '-o', default='SGD', type=str, help='optimizer to use from torch.nn.optim')
     parser.add_argument('--input-weights', '-i', default=None, type=str, help='path of pth file for pre-trained weights')
     parser.add_argument('--disable-lr-scheduler', action='store_true', help='disable the learning rate cosine anealing scheduler')
+    parser.add_argument('--loss-goal', default=0, type=float, help='average loss goal to stop training at')
 
-    parser.add_argument('--weight-decay', default=5e-2, type=float, help='weight decay used in optimizer')
+    parser.add_argument('--weight-decay', default=5e-4, type=float, help='weight decay used in optimizer')
     parser.add_argument('--num-workers', default=4, type=int, help='number of workers (dataset download)')
     parser.add_argument('--checkpoint-model', default=10, type=int, help='number of epochs to checkpoint the model')
 
     parser.add_argument('--differential-privacy', '--dp', default=None, type=str, choices=('fastdp', 'opacus'), help='wether to train the model with differential privacy')
+    parser.add_argument('--augmentation-multiplicity', '--am', default=1, type=int, help='augmentation multiplicity for DP SGD')
     parser.add_argument('--epsilon', default=8.0, type=float, help='epsilon for differential privacy')
     parser.add_argument('--delta', default=1e-5, type=float, help='delta for differential privacy')
     parser.add_argument('--max-grad-norm', default=1.0, type=float, help='maximum gradient norm for differential privacy')
@@ -39,17 +42,19 @@ def main():
     parser.add_argument('--lora-dropout', default=1e-1, type=float, help='dropout for LoRA')
 
     args = parser.parse_args()
+    
 
-    if args.data_augmentation and args.differential_privacy != 'opacus':
-        loader_transform = transforms.Compose(static.AUGMENTATIONS + static.NORMALIZATIONS)
-    elif args.data_augmentation and args.differential_privacy == 'opacus':
-        loader_transform = transforms.Compose([transforms.ToTensor()])
-    else:
-        loader_transform = transforms.Compose(static.NORMALIZATIONS)
+    dataset_transform = transforms.Compose(static.AUGMENTATIONS + static.NORMALIZATIONS) if args.differential_privacy else transforms.Compose(static.NORMALIZATIONS)
+    testset_transform = transforms.Compose(static.NORMALIZATIONS)
 
-    train_loader, test_loader = loader.load_dataset(static.DATASET_NAME, loader_transform, transforms.Compose(static.NORMALIZATIONS), args.batch_size, args.num_workers)
+    train_loader, test_loader = loader.load_dataset(static.DATASET_NAME, dataset_transform, testset_transform, args.batch_size, args.num_workers, 
+                                                    augmentation_multiplicity=args.augmentation_multiplicity)
+    if args.input_weights:
+        state_dict = torch.load(args.inputs_weights, weights_only=True)
+        model_state_dict = state_dict['model']
+        print(f"Loading pretrained model with Test loss: {state_dict['loss']}, Test accuracy: {state_dict['accuracy']:.2f}")
 
-    model = loader.model_factory(args.model, weights_path=args.input_weights, fix_dp=True, pretrained=args.pretrained)
+    model = loader.model_factory(args.model, state_dict=model_state_dict if args.input_weights else None, fix_dp=True, pretrained=args.pretrained)
 
     criterion =  nn.CrossEntropyLoss()
 
@@ -102,10 +107,17 @@ def main():
                 poisson_sampling=False
             )
 
-    dp_transforms = static.DP_TRANSFORMS if args.differential_privacy == 'opacus' and args.data_augmentation else None
+    starting_state_dict={
+        'args': args,
+        'trained_on': {
+            'args': state_dict['args'],
+            'input_weights': args.input_weights
+        } if args.input_weights else None
+    }
 
-    trainer.train(model, train_loader, test_loader, criterion, optimizer, scheduler, args.output,
-                epochs=args.epochs, checkpoint_model=args.checkpoint_model, state_dict={'args': args}, dp_transforms=dp_transforms, use_scheduler=not args.disable_lr_scheduler)
+    trainer.train(model, train_loader, test_loader, criterion, optimizer, scheduler, args.output, epochs=args.epochs, 
+                checkpoint_model=args.checkpoint_model, state_dict=starting_state_dict, augmentation_multiplicity=args.augmentation_multiplicity, 
+                use_scheduler=not args.disable_lr_scheduler, loss_goal=args.loss_goal)
 
 if __name__ == "__main__":
     main()

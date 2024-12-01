@@ -7,13 +7,34 @@ from torch.utils.data import DataLoader
 from torchvision import datasets
 from opacus.validators import ModuleValidator
 from torch.nn import LayerNorm
+from torch.utils.data import Dataset
 
-def load_dataset(dataset, dataset_transform, testset_transform, batch_size, num_workers):
+class MultiTransformDataset(Dataset):
+    def __init__(self, dataset, transform, augmentation_multiplicity):
+        self.dataset = dataset
+        self.transform = transform
+        self.augmentation_multiplicity = augmentation_multiplicity
+
+    def __len__(self):
+        return len(self.dataset)
+
+    def __getitem__(self, idx):
+        inputs, labels = self.dataset[idx]
+        
+        # Apply the transform multiple times
+        augmented_inputs = torch.stack([self.transform(inputs) for _ in range(self.augmentation_multiplicity)])
+
+        return augmented_inputs, labels
+
+def load_dataset(dataset, dataset_transform, testset_transform, batch_size, num_workers, augmentation_multiplicity=1):
     dataset = getattr(datasets, dataset)
 
     # Download dataset if not already downloaded
-    trainset = dataset(root='./data', train=True, download=True, transform=dataset_transform)
+    trainset = dataset(root='./data', train=True, download=True, transform=dataset_transform if augmentation_multiplicity == 1 else None)
     testset = dataset(root='./data', train=False, download=True, transform=testset_transform)
+
+    if augmentation_multiplicity != 1:
+        trainset = MultiTransformDataset(trainset, dataset_transform, augmentation_multiplicity)
 
     # Load dataset
     trainloader = DataLoader(trainset, batch_size=batch_size, num_workers=num_workers, shuffle=True)
@@ -21,7 +42,7 @@ def load_dataset(dataset, dataset_transform, testset_transform, batch_size, num_
 
     return trainloader, testloader
 
-def model_factory(model_name, weights_path=None, fix_dp=True, pretrained=False):
+def model_factory(model_name, state_dict=None, fix_dp=True, pretrained=False):
     match model_name:
         case 'vit-tiny':
             model = VisionTransformer(
@@ -77,10 +98,8 @@ def model_factory(model_name, weights_path=None, fix_dp=True, pretrained=False):
     if fix_dp:
         model = ModuleValidator.fix(model, num_groups=16)
 
-    if weights_path:
-        state_dict = torch.load(weights_path, weights_only=True)
-        model.load_state_dict(state_dict['model'])
-        print(f"Loaded pretrained model with Test loss: {state_dict['loss']}, Test accuracy: {state_dict['accuracy']:.2f}")
+    if state_dict:
+        model.load_state_dict(state_dict)
 
     model.to(static.DEVICE)
 
