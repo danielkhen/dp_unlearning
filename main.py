@@ -49,6 +49,7 @@ def main():
 
     train_loader, test_loader = loader.load_dataset(static.DATASET_NAME, dataset_transform, testset_transform, args.batch_size, args.num_workers, 
                                                     augmentation_multiplicity=args.augmentation_multiplicity)
+    
     if args.input_weights:
         state_dict = torch.load(args.inputs_weights, weights_only=True)
         model_state_dict = state_dict['model']
