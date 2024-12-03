@@ -134,7 +134,9 @@ def train_epoch_dp(model, train_loader, criterion, optimizer, augmentation_multi
             running_loss += loss.item()
             loss.backward()
 
-            param.grad_sample_sum += param.grad_sample
+            # Accumulate gradients for this augmentation
+            for param in model.parameters():
+                param.grad_sample_sum += param.grad_sample
 
         # Average the gradients over all augmentations
         for param in model.parameters():
