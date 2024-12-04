@@ -128,6 +128,7 @@ def train_epoch_dp(model, train_loader, criterion, optimizer):
     total_predictions = 0
     augmentation_multiplicity = train_loader.dataset.augmentation_multiplicity if isinstance(train_loader.dataset, MultiTransformDataset) else 1
     batch_size = train_loader.batch_size
+    print(batch_size, augmentation_multiplicity)
     model.train() # Set the model to training mode
 
     for stacked_inputs, labels in train_loader:
@@ -159,10 +160,7 @@ def train_epoch_dp(model, train_loader, criterion, optimizer):
 
             # Accumulate gradients for this augmentation
             for param in model.parameters():
-                if param.grad_sample_sum:
-                    param.grad_sample_sum += param.grad_sample
-                else: 
-                    param.grad_sum_sum = param.grad_sample.clone()
+                param.grad_sample_sum += param.grad_sample
 
         # Average the gradients over all augmentations
         for param in model.parameters():
