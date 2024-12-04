@@ -7,7 +7,7 @@ from loader import MultiTransformDataset
 from opacus.utils.batch_memory_manager import BatchMemoryManager
 
 # Train model
-def train(model, train_loader, test_loader, criterion, optimizer, weights_path, schedulers=[], epochs=200, checkpoint_model=10, state_dict={}, loss_goal=0, differential_privacy=True, ma_model=None, max_physical_batch_size=512):
+def train(model, train_loader, test_loader, criterion, optimizer, weights_path, schedulers=[], epochs=200, checkpoint_every=10, state_dict={}, loss_goal=0, differential_privacy=True, ma_model=None, max_physical_batch_size=512):
     training_start_time = time.time()
     state_dict['epochs'] = []
     state_dict['checkpoints'] = []
@@ -48,7 +48,7 @@ def train(model, train_loader, test_loader, criterion, optimizer, weights_path, 
             ma_model.update_parameters(model)
         
         # Checkpoint model
-        if epoch % checkpoint_model == 0:
+        if epoch % checkpoint_every == 0:
             # Output model statistics
             test_avg_loss, test_accuracy = tester.test(checkpoint_model, test_loader, criterion)
             print(f"Checkpoint model at epoch {epoch} with: \n" +

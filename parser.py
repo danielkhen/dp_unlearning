@@ -22,7 +22,7 @@ parser.add_argument('--ema-decay', default=0.9, type=float, help='decay for expo
 
 parser.add_argument('--weight-decay', default=5e-4, type=float, help='weight decay used in optimizer')
 parser.add_argument('--num-workers', default=4, type=int, help='number of workers (dataset download)')
-parser.add_argument('--checkpoint-model', default=10, type=int, help='number of epochs to checkpoint the model')
+parser.add_argument('--checkpoint-every', default=10, type=int, help='number of epochs to checkpoint the model')
 
 parser.add_argument('--differential-privacy', '--dp', action='store_true', help='wether to train the model with differential privacy')
 parser.add_argument('--max-physical-batch-size', '--maxbs', default=512, type=int, help='maximum physical size for grad sample batch')
