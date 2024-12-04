@@ -4,7 +4,7 @@ import tester
 import static
 
 from loader import MultiTransformDataset
-from opacus import BatchMemoryManager
+from opacus.utils.batch_memory_manager import BatchMemoryManager
 
 # Train model
 def train(model, train_loader, test_loader, criterion, optimizer, weights_path, schedulers=[], epochs=200, checkpoint_model=10, state_dict={}, loss_goal=0, differential_privacy=True, ma_model=None, max_physical_batch_size=512):
