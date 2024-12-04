@@ -25,7 +25,7 @@ parser.add_argument('--num-workers', default=4, type=int, help='number of worker
 parser.add_argument('--checkpoint-model', default=10, type=int, help='number of epochs to checkpoint the model')
 
 parser.add_argument('--differential-privacy', '--dp', action='store_true', help='wether to train the model with differential privacy')
-parser.add_argument('--MAX_PHYSICAL_BATCH_SIZE', default=512, type=int, help='maximum physical size for grad sample batch')
+parser.add_argument('--max-physical-batch-size', '--maxbs', default=512, type=int, help='maximum physical size for grad sample batch')
 parser.add_argument('--epsilon', default=8.0, type=float, help='epsilon for differential privacy')
 parser.add_argument('--delta', default=1e-5, type=float, help='delta for differential privacy')
 parser.add_argument('--max-grad-norm', default=1.0, type=float, help='maximum gradient norm for differential privacy')
