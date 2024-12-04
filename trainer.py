@@ -3,18 +3,29 @@ import time
 import tester
 import static
 
+from loader import MultiTransformDataset
+from opacus import BatchMemoryManager
 
 # Train model
-def train(model, train_loader, test_loader, criterion, optimizer, scheduler, weights_path, epochs=200, checkpoint_model=10, state_dict={}, augmentation_multiplicity=1, use_scheduler=True, loss_goal=0):
+def train(model, train_loader, test_loader, criterion, optimizer, weights_path, schedulers=[], epochs=200, checkpoint_model=10, state_dict={}, loss_goal=0, differential_privacy=True, ma_model=None):
     training_start_time = time.time()
     state_dict['epochs'] = []
     state_dict['checkpoints'] = []
+    checkpoint_model = ma_model.module if ma_model else model
 
     for epoch in range(1, epochs + 1):
         # Train for one epoch and calculate the average loss
         start_time = time.time()
-        epoch_loss, epoch_accuracy = train_epoch(model, train_loader, criterion, optimizer) if augmentation_multiplicity == 1 else train_epoch_dp(
-            model, train_loader, criterion, optimizer, augmentation_multiplicity)
+
+        if differential_privacy:
+            with BatchMemoryManager(
+                data_loader=train_loader, 
+                max_physical_batch_size=static.MAX_PHYSICAL_BATCH_SIZE, 
+                optimizer=optimizer
+            ) as memory_safe_train_loader:
+                epoch_loss, epoch_accuracy = train_epoch_dp(model, memory_safe_train_loader, criterion, optimizer)
+        else:
+            epoch_loss, epoch_accuracy = train_epoch(model, train_loader, criterion, optimizer)
         end_time = time.time()
         print(f"Epoch {epoch} - Train loss: {epoch_loss}, Train accuracy: {epoch_accuracy} , Time: {(end_time - start_time):.2f}s")
 
@@ -29,14 +40,17 @@ def train(model, train_loader, test_loader, criterion, optimizer, scheduler, wei
             print("Training stopped after achieving loss goal")
             break
 
-        # Perform scheduler step
-        if use_scheduler:
+        # Perform schedulers steps
+        for scheduler in schedulers:
             scheduler.step()
+
+        if ma_model:
+            ma_model.update_parameters(model)
         
         # Checkpoint model
         if epoch % checkpoint_model == 0:
             # Output model statistics
-            test_avg_loss, test_accuracy = tester.test(model, test_loader, criterion)
+            test_avg_loss, test_accuracy = tester.test(checkpoint_model, test_loader, criterion)
             print(f"Checkpoint model at epoch {epoch} with: \n" +
                   f"Test loss: {test_avg_loss}, Test accuracy: {test_accuracy:.2f}")
 
@@ -47,7 +61,7 @@ def train(model, train_loader, test_loader, criterion, optimizer, scheduler, wei
             })
 
             # Save model weights
-            torch.save(state_dict | {'model': model.state_dict()}, weights_path + '.checkpoint') # Merge state dict so it doesn't sit on memory
+            torch.save(state_dict | {'model': checkpoint_model.state_dict()}, weights_path + '.checkpoint') # Merge state dict so it doesn't sit on memory
 
     # Output model statistics
     test_avg_loss, test_accuracy = tester.test(model, test_loader, criterion)
@@ -70,9 +84,15 @@ def train_epoch(model, train_loader, criterion, optimizer):
     running_loss = 0.0
     correct_predictions = 0
     total_predictions = 0
+    augmentation_multiplicity = train_loader.dataset.augmentation_multiplicity if isinstance(train_loader.dataset, MultiTransformDataset) else 1
     model.train() # Set the model to training mode
 
     for inputs, labels in train_loader:
+        # Concat different augmentation and labels to a single batch
+        if augmentation_multiplicity != 1:
+            inputs = torch.concat(torch.unbind(inputs, dim=1)) 
+            labels = torch.cat([labels] * augmentation_multiplicity)
+
         # Move inputs and labels to the specified device
         inputs, labels = inputs.to(static.DEVICE), labels.to(static.DEVICE)
 
@@ -102,10 +122,11 @@ def train_epoch(model, train_loader, criterion, optimizer):
     return avg_loss, accuracy
 
 # Train model for one epoch with differntial privacy augmentations
-def train_epoch_dp(model, train_loader, criterion, optimizer, augmentation_multiplicity):
+def train_epoch_dp(model, train_loader, criterion, optimizer):
     running_loss = 0.0
     correct_predictions = 0
     total_predictions = 0
+    augmentation_multiplicity = train_loader.dataset.augmentation_multiplicity if isinstance(train_loader.dataset, MultiTransformDataset) else 1
     model.train() # Set the model to training mode
 
     for stacked_inputs, labels in train_loader:
@@ -114,10 +135,11 @@ def train_epoch_dp(model, train_loader, criterion, optimizer, augmentation_multi
 
         # Initialize per gradient sample sum
         for param in model.parameters():
-            param.grad_sample_sum = torch.zeros((stacked_inputs.size()[0], ) + param.size(), device=static.DEVICE) # Expand in batch size
+            param.grad_sample_sum = None
 
+        inputs_list = [stacked_inputs] if augmentation_multiplicity == 1 else torch.unbind(stacked_inputs, dim=1) # Unbind by transforms dim
         
-        for inputs in torch.unbind(stacked_inputs, dim=1): #Unbind by transform dim
+        for inputs in inputs_list: 
             # Zero gradients
             optimizer.zero_grad()
 
@@ -136,7 +158,10 @@ def train_epoch_dp(model, train_loader, criterion, optimizer, augmentation_multi
 
             # Accumulate gradients for this augmentation
             for param in model.parameters():
-                param.grad_sample_sum += param.grad_sample
+                if param.grad_sample_sum:
+                    param.grad_sample_sum += param.grad_sample
+                else: 
+                    param.grad_sum_sum = param.grad_sample.clone()
 
         # Average the gradients over all augmentations
         for param in model.parameters():
