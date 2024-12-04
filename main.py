@@ -80,7 +80,7 @@ def main():
 
     trainer.train(model, train_loader, test_loader, criterion, optimizer, args.output, schedulers=schedulers, epochs=args.epochs, 
                 checkpoint_model=args.checkpoint_model, state_dict=starting_state_dict, differential_privacy=args.differential_privacy, 
-                loss_goal=args.loss_goal, ma_model=ema_model if args.exponential_moving_average else None)
+                loss_goal=args.loss_goal, ma_model=ema_model if args.exponential_moving_average else None, max_physical_batch_size=args.max_physical_batch_size)
 
 if __name__ == "__main__":
     main()
