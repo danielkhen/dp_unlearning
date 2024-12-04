@@ -8,7 +8,7 @@ from torchvision import transforms
 
 
 DEVICE = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-MAX_PHYSICAL_BATCH_SIZE = 512
+MAX_PHYSICAL_BATCH_SIZE = 256
 
 # Dataset parameters
 DATASET_NAME = 'CIFAR10'

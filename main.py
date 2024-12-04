@@ -16,7 +16,7 @@ def main():
     args = parser.parse_args()
 
     testset_transform = transforms.Compose(static.NORMALIZATIONS)
-    dataset_transform = transforms.Compose(static.AUGMENTATIONS + static.NORMALIZATIONS) if args.differential_privacy or args.augmentation_multiplicity != 1 else testset_transform
+    dataset_transform = transforms.Compose(static.AUGMENTATIONS + static.NORMALIZATIONS) if args.data_augmentation or args.augmentation_multiplicity != 1 else testset_transform
 
     train_loader, test_loader = loader.load_dataset(static.DATASET_NAME, dataset_transform, testset_transform, args.batch_size, args.num_workers, 
                                                     augmentation_multiplicity=args.augmentation_multiplicity)
@@ -54,7 +54,7 @@ def main():
         schedulers.append(optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs))
 
     if args.exponential_moving_average:
-        ema_model = AveragedModel(model, multi_avg_fn=args.exponential_moving_average(args.ema_decay), use_buffers=True, device=static.DEVICE)
+        ema_model = AveragedModel(model, multi_avg_fn=get_ema_multi_avg_fn(args.ema_decay), use_buffers=True, device=static.DEVICE)
 
     if args.differential_privacy:
         privacy_engine = PrivacyEngine()
