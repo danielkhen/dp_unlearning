@@ -135,7 +135,7 @@ def train_epoch_dp(model, train_loader, criterion, optimizer):
 
         # Initialize per gradient sample sum
         for param in model.parameters():
-            param.grad_sample_sum = torch.zeros(((stacked_inputs.size()[0], ), ) + param.size(), device=static.DEVICE) # Stack param size by batch size
+            param.grad_sample_sum = torch.zeros((stacked_inputs.size()[0], ) + param.size(), device=static.DEVICE) # Stack param size by batch size
 
         inputs_list = [stacked_inputs] if augmentation_multiplicity == 1 else torch.unbind(stacked_inputs, dim=1) # Unbind by transforms dim
         
