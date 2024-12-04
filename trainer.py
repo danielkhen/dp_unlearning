@@ -127,8 +127,6 @@ def train_epoch_dp(model, train_loader, criterion, optimizer):
     correct_predictions = 0
     total_predictions = 0
     augmentation_multiplicity = train_loader.dataset.augmentation_multiplicity if isinstance(train_loader.dataset, MultiTransformDataset) else 1
-    batch_size = train_loader.batch_size
-    print(batch_size, augmentation_multiplicity)
     model.train() # Set the model to training mode
 
     for stacked_inputs, labels in train_loader:
@@ -137,7 +135,7 @@ def train_epoch_dp(model, train_loader, criterion, optimizer):
 
         # Initialize per gradient sample sum
         for param in model.parameters():
-            param.grad_sample_sum = torch.zeros((batch_size, ) + param.size(), device=static.DEVICE)
+            param.grad_sample_sum = torch.zeros(((stacked_inputs.size()[0], ), ) + param.size(), device=static.DEVICE) # Stack param size by batch size
 
         inputs_list = [stacked_inputs] if augmentation_multiplicity == 1 else torch.unbind(stacked_inputs, dim=1) # Unbind by transforms dim
         
