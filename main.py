@@ -54,7 +54,7 @@ def main():
         schedulers.append(optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs))
 
     if args.exponential_moving_average:
-        ema_model = AveragedModel(model, multi_avg_fn=get_ema_multi_avg_fn(args.ema_decay), use_buffers=True, device=static.DEVICE)
+        ema_model = AveragedModel(model, multi_avg_fn=get_ema_multi_avg_fn(args.ema_decay), use_buffers=True, device=torch.device('cpu'))
 
     if args.differential_privacy:
         privacy_engine = PrivacyEngine()
