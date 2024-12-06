@@ -183,13 +183,13 @@ def train_epoch_dp_functorch(model, train_loader, criterion, optimizer, augmenta
         # Move inputs and labels to the specified device
         inputs, labels = inputs.to(static.CUDA), labels.to(static.CUDA)
 
-        # Compute predictions
-        outputs = model(inputs)
-        _, predictions = torch.max(outputs.data, 1)
+        # # Compute predictions
+        # outputs = model(inputs)
+        # _, predictions = torch.max(outputs.data, 1)
 
-        # Update the running total of correct predictions and samples
-        correct_predictions += (predictions == labels).sum().item()
-        total_predictions += labels.size(0)
+        # # Update the running total of correct predictions and samples
+        # correct_predictions += (predictions == labels).sum().item()
+        # total_predictions += labels.size(0)
 
         # Compute the loss and its gradients
         grad_samples, grad_losses = compute_grad_samples(params, inputs, labels)
