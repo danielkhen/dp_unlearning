@@ -167,8 +167,9 @@ def train_epoch_dp_functorch(model, train_loader, criterion, optimizer, augmenta
 
     fmodel, _fparams = make_functional(model)
 
-    def compute_sample_loss(output, label):
-        outputs, labels = output.unsqueeze(0), label.unsqueeze(0)
+    def compute_sample_loss(params, input, label):
+        inputs, labels = input.unsqueeze(0), label.unsqueeze(0)
+        outputs = fmodel(params, inputs)
         loss = criterion(outputs, labels)
 
         return loss
@@ -183,7 +184,7 @@ def train_epoch_dp_functorch(model, train_loader, criterion, optimizer, augmenta
         inputs, labels = inputs.to(static.CUDA), labels.to(static.CUDA)
 
         # Compute predictions
-        outputs = fmodel(params, inputs)
+        outputs = model(inputs)
         _, predictions = torch.max(outputs.data, 1)
 
         # Update the running total of correct predictions and samples
@@ -191,16 +192,16 @@ def train_epoch_dp_functorch(model, train_loader, criterion, optimizer, augmenta
         total_predictions += labels.size(0)
 
         # Compute the loss and its gradients
-        grad_samples, group_losses = compute_grad_samples(outputs, labels)
+        grad_samples, grad_losses = compute_grad_samples(params, inputs, labels)
         grad_samples = [grad.detach() for grad in grad_samples]
-        loss = torch.mean(group_losses)
+        loss = torch.mean(grad_losses)
         running_loss += loss.item()
 
         # Average grad samples over augmentations
-        for param, grad in zip(model.parameters(), grad_samples):
+        for param, grad in zip(params, grad_samples):
             param.grad_sample = torch.mean(torch.stack(torch.split(grad, augmentation_multiplicity)), dim=0)
             print(grad.size(), param.size(), param.grad_sample.size())
-        
+
         # Adjust learning weights and zero gradients
         optimizer.step()
         optimizer.zero_grad()
