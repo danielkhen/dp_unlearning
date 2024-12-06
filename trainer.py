@@ -194,7 +194,7 @@ def train_epoch_dp_functorch(model, train_loader, criterion, optimizer, augmenta
         # Average grad samples over augmentations
         for param, grad in zip(model.parameters(), grad_samples):
             param.grad_sample = torch.mean(torch.stack(torch.split(grad, augmentation_multiplicity)), dim=0)
-            print(grad.size(), param.size(), grad_sample.size())
+            print(grad.size(), param.size(), param.grad_sample.size())
         
         # Adjust learning weights and zero gradients
         optimizer.step()
