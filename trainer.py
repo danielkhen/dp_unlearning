@@ -164,7 +164,7 @@ def compute_sample_loss(criterion, output, label):
     return loss
 
 compute_grad = grad_and_value(compute_sample_loss) # Returns loss and gradients
-compute_grad_samples = vmap(compute_grad, im_dims=(None, 0, 0)) # compute grads over groups of batches
+compute_grad_samples = vmap(compute_grad, in_dims=(None, 0, 0)) # compute grads over groups of batches
 
 # Train model for one epoch with differntial privacy augmentations
 def train_epoch_dp_functorch(model, train_loader, criterion, optimizer, augmentation_multiplicity):
