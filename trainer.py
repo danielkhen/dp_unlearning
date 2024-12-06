@@ -188,12 +188,14 @@ def train_epoch_dp_functorch(model, train_loader, criterion, optimizer, augmenta
         # Compute the loss and its gradients
         grad_samples, group_losses = compute_grad_samples(outputs, labels)
         grad_samples = [grad.detach() for grad in grad_samples]
+        print(len(grad_samples), grad_samples[0].size())
         loss = torch.mean(group_losses)
         running_loss += loss.item()
 
         # Average grad samples over augmentations
         for param, grad in zip(model.parameters(), grad_samples):
             param.grad_sample = torch.mean(torch.stack(torch.split(grad, augmentation_multiplicity)), dim=0)
+            print(param.grad_sample.size())
         
         # Adjust learning weights and zero gradients
         optimizer.step()
