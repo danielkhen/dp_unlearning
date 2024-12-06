@@ -3,41 +3,39 @@ import torch
 import timm
 
 from timm.models.vision_transformer import VisionTransformer
-from torch.utils.data import DataLoader
 from torchvision import datasets
 from opacus.validators import ModuleValidator
 from torch.nn import LayerNorm
-from torch.utils.data import Dataset
-
-class MultiTransformDataset(Dataset):
-    def __init__(self, dataset, transform, augmentation_multiplicity):
+from torch.utils.data import Dataset, Sampler, DataLoader
+    
+class MultiplicitySampler(Sampler):
+    def __init__(self, dataset, augmentation_multiplicity):
         self.dataset = dataset
-        self.transform = transform
         self.augmentation_multiplicity = augmentation_multiplicity
+        self.num_samples = len(dataset) // augmentation_multiplicity
+
+    def __iter__(self):
+        sample_indices = (torch.randperm(self.num_samples)).tolist()
+
+        for sample_index in sample_indices:
+            for _ in range(self.augmentation_multiplicity):
+                yield sample_index
 
     def __len__(self):
-        return len(self.dataset)
-
-    def __getitem__(self, idx):
-        inputs, labels = self.dataset[idx]
-        
-        # Apply the transform multiple times
-        augmented_inputs = torch.stack([self.transform(inputs) for _ in range(self.augmentation_multiplicity)])
-
-        return augmented_inputs, labels
+        return len(self.dataset) * self.augmentation_multiplicity
 
 def load_dataset(dataset, dataset_transform, testset_transform, batch_size, num_workers, augmentation_multiplicity=1):
     dataset = getattr(datasets, dataset)
 
     # Download dataset if not already downloaded
-    trainset = dataset(root='./data', train=True, download=True, transform=dataset_transform if augmentation_multiplicity == 1 else None)
+    trainset = dataset(root='./data', train=True, download=True, transform=dataset_transform)
     testset = dataset(root='./data', train=False, download=True, transform=testset_transform)
 
-    if augmentation_multiplicity != 1:
-        trainset = MultiTransformDataset(trainset, dataset_transform, augmentation_multiplicity)
+    # Random sampler for augmentation multiplicity
+    sampler = MultiplicitySampler(trainset, augmentation_multiplicity)
 
     # Load dataset
-    trainloader = DataLoader(trainset, batch_size=batch_size, num_workers=num_workers, shuffle=True)
+    trainloader = DataLoader(trainset, batch_size=batch_size, num_workers=num_workers, sampler=sampler)
     testloader = DataLoader(testset, batch_size=batch_size, num_workers=num_workers, shuffle=False)
 
     return trainloader, testloader
@@ -101,6 +99,6 @@ def model_factory(model_name, state_dict=None, fix_dp=True, pretrained=False):
     if state_dict:
         model.load_state_dict(state_dict)
 
-    model.to(static.DEVICE)
+    model.to(static.CUDA)
 
     return model

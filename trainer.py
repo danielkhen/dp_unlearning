@@ -5,6 +5,7 @@ import static
 
 from loader import MultiTransformDataset
 from opacus.utils.batch_memory_manager import BatchMemoryManager
+from tqdm import tqdm
 
 # Train model
 def train(model, train_loader, test_loader, criterion, optimizer, weights_path, schedulers=[], epochs=200, checkpoint_every=10, state_dict={}, loss_goal=0, differential_privacy=True, ma_model=None, max_physical_batch_size=512):
@@ -13,7 +14,7 @@ def train(model, train_loader, test_loader, criterion, optimizer, weights_path, 
     state_dict['checkpoints'] = []
     checkpoint_model = ma_model.module if ma_model else model
 
-    for epoch in range(1, epochs + 1):
+    for epoch in tqdm(range(1, epochs + 1)):
         # Train for one epoch and calculate the average loss
         start_time = time.time()
 
@@ -85,20 +86,11 @@ def train_epoch(model, train_loader, criterion, optimizer):
     running_loss = 0.0
     correct_predictions = 0
     total_predictions = 0
-    augmentation_multiplicity = train_loader.dataset.augmentation_multiplicity if isinstance(train_loader.dataset, MultiTransformDataset) else 1
     model.train() # Set the model to training mode
 
-    for inputs, labels in train_loader:
-        # Concat different augmentation and labels to a single batch
-        if augmentation_multiplicity != 1:
-            inputs = torch.concat(torch.unbind(inputs, dim=1)) 
-            labels = torch.cat([labels] * augmentation_multiplicity)
-
+    for inputs, labels in tqdm(train_loader):
         # Move inputs and labels to the specified device
-        inputs, labels = inputs.to(static.DEVICE), labels.to(static.DEVICE)
-
-        # Zero gradients
-        optimizer.zero_grad()
+        inputs, labels = inputs.to(static.CUDA), labels.to(static.CUDA)
 
         # Compute predictions
         outputs = model(inputs)
@@ -113,8 +105,9 @@ def train_epoch(model, train_loader, criterion, optimizer):
         running_loss += loss.item()
         loss.backward()
 
-        # Adjust learning weights
+        # Adjust learning weights and zero gradients
         optimizer.step()
+        optimizer.zero_grad()
 
     # Calculate the average loss and accuracy
     avg_loss = running_loss / len(train_loader)
@@ -130,46 +123,31 @@ def train_epoch_dp(model, train_loader, criterion, optimizer):
     augmentation_multiplicity = train_loader.dataset.augmentation_multiplicity if isinstance(train_loader.dataset, MultiTransformDataset) else 1
     model.train() # Set the model to training mode
 
-    for stacked_inputs, labels in train_loader:
+    for inputs, labels in tqdm(train_loader):
         # Move inputs and labels to the specified device
-        stacked_inputs, labels = stacked_inputs.to(static.DEVICE), labels.to(static.DEVICE)
+        inputs, labels = inputs.to(static.CUDA), labels.to(static.CUDA)
 
-        # Initialize per gradient sample sum
-        for param in model.parameters():
-            param.grad_sample_sum = torch.zeros((stacked_inputs.size()[0], ) + param.size(), device=static.DEVICE) # Stack param size by batch size
+        # Compute predictions
+        outputs = model(inputs)
+        _, predictions = torch.max(outputs.data, 1)
 
-        inputs_list = torch.unbind(stacked_inputs, dim=1) if isinstance(train_loader.dataset, MultiTransformDataset) else [stacked_inputs] # Unbind by transforms dim
-        
-        for inputs in inputs_list:
-            # Zero gradients
-            optimizer.zero_grad()
+        # Update the running total of correct predictions and samples
+        correct_predictions += (predictions == labels).sum().item()
+        total_predictions += labels.size(0)
 
-            # Compute predictions
-            outputs = model(inputs)
-            _, predictions = torch.max(outputs.data, 1)
+        # Compute the loss and its gradients
+        loss = criterion(outputs, labels)
+        running_loss += loss.item()
+        loss.backward()
 
-            # Update the running total of correct predictions and samples
-            correct_predictions += (predictions == labels).sum().item()
-            total_predictions += labels.size(0)
-
-            # Compute the loss and its gradients
-            loss = criterion(outputs, labels)
-            running_loss += loss.item()
-            loss.backward(retain_graph=True)
-
-            # Clean graph for unsaved 
-            del outputs
-
-            # Accumulate gradients for this augmentation
+        # Average grad samples over augmentations
+        if augmentation_multiplicity != 1:
             for param in model.parameters():
-                param.grad_sample_sum += param.grad_sample
-
-        # Average the gradients over all augmentations
-        for param in model.parameters():
-            param.grad_sample = param.grad_sample_sum / augmentation_multiplicity
+                param.grad_sample = torch.mean(torch.stack(torch.split(param.grad_sample, augmentation_multiplicity)), dim=0)
         
-        # Adjust learning weights, optimizer should clip already averaged grad samples
+        # Adjust learning weights and zero gradients
         optimizer.step()
+        optimizer.zero_grad()
 
     # Calculate the average loss and accuracy
     avg_loss = running_loss / (len(train_loader) * augmentation_multiplicity)

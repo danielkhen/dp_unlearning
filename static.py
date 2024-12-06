@@ -2,12 +2,10 @@ import warnings
 warnings.simplefilter("ignore")
 
 import torch
-
-from more_itertools import powerset
 from torchvision import transforms
 
-
-DEVICE = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+CPU = torch.device('cpu')
+CUDA = torch.device('cuda')
 
 # Dataset parameters
 DATASET_NAME = 'CIFAR10'

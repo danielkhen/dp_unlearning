@@ -10,7 +10,7 @@ def test(model, test_loader, criterion):
     with torch.no_grad():
         for inputs, labels in test_loader:
             # Move inputs and labels to the specified device
-            inputs, labels = inputs.to(static.DEVICE), labels.to(static.DEVICE)
+            inputs, labels = inputs.to(static.CUDA), labels.to(static.CUDA)
             
             # Compute predictions
             outputs = model(inputs)

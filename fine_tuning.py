@@ -28,7 +28,7 @@ def get_lora_model(model, target_children, rank, lora_alpha, lora_dropout):
     
     model = get_peft_model(model, LoraConfig(target_modules=target_modules, r=rank, lora_alpha=lora_alpha, lora_dropout=lora_dropout))
     unfreeze_peft_model(model)
-    model.to(static.DEVICE)
+    model.to(static.CUDA)
 
     return model, get_trainable_parameters(model)
 
@@ -48,7 +48,7 @@ def prune_gradients(model, target_children, amount):
     target_parameters_delta = int(sum(param.numel() for param in target_parameters) * amount)
     
     for param in target_parameters:
-        mask = get_pruning_mask(param, amount=amount).to(static.DEVICE)
+        mask = get_pruning_mask(param, amount=amount).to(static.CUDA)
         param.register_hook(lambda grad, mask=mask: grad * mask) # Ensure mask scope is in lambda function
 
     return get_trainable_parameters(model) - target_parameters_delta
@@ -63,6 +63,6 @@ def prune_model(model, target_children, amount):
     for module in target_modules:
         prune.l1_unstructured(module, 'weight', amount=amount)
 
-    model.to(static.DEVICE)
+    model.to(static.CUDA)
 
     return get_trainable_parameters(model) - target_parameters_delta

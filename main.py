@@ -1,4 +1,4 @@
-import argparse
+import modules
 import loader
 import static
 import trainer
@@ -9,7 +9,6 @@ from torch import nn, optim
 from torchvision import transforms
 from torch.optim.swa_utils import AveragedModel, get_ema_multi_avg_fn
 from opacus import PrivacyEngine
-from modules import Conv2dWS
 from parser import parser
 
 def main():
@@ -29,7 +28,7 @@ def main():
     model = loader.model_factory(args.model, state_dict=model_state_dict if args.input_weights else None, fix_dp=True, pretrained=args.pretrained)
 
     if args.weight_standardization:
-        Conv2dWS.replace_conv2d_with_ws(model)
+        modules.standardize_model(model)
 
     if args.peft:
         trainable_parameters = 0
@@ -54,7 +53,7 @@ def main():
         schedulers.append(optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs))
 
     if args.exponential_moving_average:
-        ema_model = AveragedModel(model, multi_avg_fn=get_ema_multi_avg_fn(args.ema_decay), use_buffers=True, device=torch.device('cpu'))
+        ema_model = AveragedModel(model, multi_avg_fn=get_ema_multi_avg_fn(args.ema_decay), use_buffers=True, device=static.CPU)
 
     if args.differential_privacy:
         privacy_engine = PrivacyEngine()
