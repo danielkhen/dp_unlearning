@@ -157,21 +157,21 @@ def train_epoch_dp(model, train_loader, criterion, optimizer, augmentation_multi
 
     return avg_loss, accuracy
 
-def compute_sample_loss(criterion, output, label):
-    outputs, labels = output.unsqueeze(0), label.unsqueeze(0)
-    loss = criterion(outputs, labels)
-
-    return loss
-
-compute_grad = grad_and_value(compute_sample_loss) # Returns loss and gradients
-compute_grad_samples = vmap(compute_grad, in_dims=(None, 0, 0)) # compute grads over groups of batches
-
 # Train model for one epoch with differntial privacy augmentations
 def train_epoch_dp_functorch(model, train_loader, criterion, optimizer, augmentation_multiplicity):
     running_loss = 0.0
     correct_predictions = 0
     total_predictions = 0
     model.train() # Set the model to training mode
+
+    def compute_sample_loss(output, label):
+        outputs, labels = output.unsqueeze(0), label.unsqueeze(0)
+        loss = criterion(outputs, labels)
+
+        return loss
+
+    compute_grad = grad_and_value(compute_sample_loss) # Returns loss and gradients
+    compute_grad_samples = vmap(compute_grad, in_dims=(0, 0)) # compute grads over groups of batches
 
     for inputs, labels in tqdm(train_loader):
         # Move inputs and labels to the specified device
@@ -186,7 +186,7 @@ def train_epoch_dp_functorch(model, train_loader, criterion, optimizer, augmenta
         total_predictions += labels.size(0)
 
         # Compute the loss and its gradients
-        grad_samples, group_losses = compute_grad_samples(criterion, outputs, labels)
+        grad_samples, group_losses = compute_grad_samples(outputs, labels)
         grad_samples = [grad.detach() for grad in grad_samples]
         loss = torch.mean(group_losses)
         running_loss += loss.item()
