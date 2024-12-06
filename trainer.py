@@ -6,6 +6,7 @@ import static
 from opacus.utils.batch_memory_manager import BatchMemoryManager
 from tqdm import tqdm
 from torch.func import grad_and_value, vmap, functional_call
+from opacus.grad_sample.functorch import make_functional
 
 # Train model
 def train(model, train_loader, test_loader, criterion, optimizer, weights_path, schedulers=[], epochs=200, checkpoint_every=10, state_dict={}, 
@@ -164,21 +165,25 @@ def train_epoch_dp_functorch(model, train_loader, criterion, optimizer, augmenta
     total_predictions = 0
     model.train() # Set the model to training mode
 
-    def compute_sample_loss(output, label):
+    fmodel, _fparams = make_functional(model)
+
+    def compute_sample_loss(params, output, label):
         outputs, labels = output.unsqueeze(0), label.unsqueeze(0)
         loss = criterion(outputs, labels)
 
         return loss
 
+    params = list(model.parameters())
+
     compute_grad = grad_and_value(compute_sample_loss) # Returns loss and gradients
-    compute_grad_samples = vmap(compute_grad, in_dims=(0, 0)) # compute grads over groups of batches
+    compute_grad_samples = vmap(compute_grad, in_dims=(None, 0, 0)) # compute grads over groups of batches
 
     for inputs, labels in tqdm(train_loader):
         # Move inputs and labels to the specified device
         inputs, labels = inputs.to(static.CUDA), labels.to(static.CUDA)
 
         # Compute predictions
-        outputs = functional_call(model, model.parameters(), inputs)
+        outputs = fmodel(params, inputs)
         _, predictions = torch.max(outputs.data, 1)
 
         # Update the running total of correct predictions and samples
