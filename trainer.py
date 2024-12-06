@@ -26,7 +26,7 @@ def train(model, train_loader, test_loader, criterion, optimizer, weights_path, 
                 epoch_loss, epoch_accuracy = train_epoch_dp(model, memory_safe_train_loader, criterion, optimizer)
         else:
             epoch_loss, epoch_accuracy = train_epoch(model, train_loader, criterion, optimizer)
-            
+
         end_time = time.time()
         print(f"Epoch {epoch} - Train loss: {epoch_loss}, Train accuracy: {epoch_accuracy} , Time: {(end_time - start_time):.2f}s")
 
@@ -141,6 +141,7 @@ def train_epoch_dp(model, train_loader, criterion, optimizer):
         inputs_list = [stacked_inputs] if isinstance(train_loader.dataset, MultiTransformDataset) else torch.unbind(stacked_inputs, dim=1) # Unbind by transforms dim
         
         for inputs in inputs_list:
+            print(inputs.size(), isinstance(train_loader.dataset, MultiTransformDataset))
             # Zero gradients
             optimizer.zero_grad()
 
