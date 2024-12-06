@@ -167,7 +167,7 @@ def train_epoch_dp_functorch(model, train_loader, criterion, optimizer, augmenta
 
     fmodel, _fparams = make_functional(model)
 
-    def compute_sample_loss(params, output, label):
+    def compute_sample_loss(output, label):
         outputs, labels = output.unsqueeze(0), label.unsqueeze(0)
         loss = criterion(outputs, labels)
 
@@ -176,7 +176,7 @@ def train_epoch_dp_functorch(model, train_loader, criterion, optimizer, augmenta
     params = list(model.parameters())
 
     compute_grad = grad_and_value(compute_sample_loss) # Returns loss and gradients
-    compute_grad_samples = vmap(compute_grad, in_dims=(None, 0, 0)) # compute grads over groups of batches
+    compute_grad_samples = vmap(compute_grad, in_dims=(0, 0)) # compute grads over groups of batches
 
     for inputs, labels in tqdm(train_loader):
         # Move inputs and labels to the specified device
