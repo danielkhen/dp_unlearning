@@ -13,7 +13,7 @@ parser.add_argument('--epochs', '-e', default=200, type=int, help='number of epo
 parser.add_argument('--optimizer', '-o', default='SGD', type=str, help='optimizer to use from torch.nn.optim')
 parser.add_argument('--input-weights', '-i', default=None, type=str, help='path of pth file for pre-trained weights')
 parser.add_argument('--loss-goal', default=0, type=float, help='average loss goal to stop training at')
-parser.add_argument('--augmentation-multiplicity', '--am', default=1, type=int, help='Use multiple augmentations per batch, increases batch size')
+parser.add_argument('--augmentation-multiplicity', '--am', default=1, type=int, help='Use multiple augmentations per batch, does not increate batch size')
 parser.add_argument('--weight_standardization', '--ws', action='store_true', help='Replace Conv2D layers that come before normallization layers with weight standardization version')
 
 parser.add_argument('--cosine-anealing', '--ca', action='store_true', help='use learning rate cosine anealing scheduler')
@@ -29,6 +29,7 @@ parser.add_argument('--max-physical-batch-size', '--maxbs', default=128, type=in
 parser.add_argument('--epsilon', default=8.0, type=float, help='epsilon for differential privacy')
 parser.add_argument('--delta', default=1e-5, type=float, help='delta for differential privacy')
 parser.add_argument('--max-grad-norm', default=1.0, type=float, help='maximum gradient norm for differential privacy')
+parser.add_argument('--grad-sample-mode', default='no-op', type=str, help='opacus mode for computing per sample gradients, no-op uses functorch')
 
 parser.add_argument('--peft', default=None, type=str, choices=('lora', 'prune', 'prune-grads'), help='the peft method to use, either lora, prune or prune-grads')
 parser.add_argument('--peft-targets', nargs='*', type=str, help='list of target model children to apply peft on')

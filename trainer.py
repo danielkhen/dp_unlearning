@@ -6,9 +6,11 @@ import static
 from loader import MultiTransformDataset
 from opacus.utils.batch_memory_manager import BatchMemoryManager
 from tqdm import tqdm
+from torch.func import grad_and_value, vmap
 
 # Train model
-def train(model, train_loader, test_loader, criterion, optimizer, weights_path, schedulers=[], epochs=200, checkpoint_every=10, state_dict={}, loss_goal=0, differential_privacy=True, ma_model=None, max_physical_batch_size=512):
+def train(model, train_loader, test_loader, criterion, optimizer, weights_path, schedulers=[], epochs=200, checkpoint_every=10, state_dict={}, 
+          loss_goal=0, differential_privacy=True, ma_model=None, max_physical_batch_size=512, augmentation_multiplicity=1, grad_sample_mode='no_op'):
     training_start_time = time.time()
     state_dict['epochs'] = []
     state_dict['checkpoints'] = []
@@ -24,7 +26,10 @@ def train(model, train_loader, test_loader, criterion, optimizer, weights_path, 
                 max_physical_batch_size=max_physical_batch_size, 
                 optimizer=optimizer
             ) as memory_safe_train_loader:
-                epoch_loss, epoch_accuracy = train_epoch_dp(model, memory_safe_train_loader, criterion, optimizer)
+                if grad_sample_mode == 'no_op':
+                    epoch_loss, epoch_accuracy = train_epoch_dp(model, memory_safe_train_loader, criterion, optimizer, augmentation_multiplicity)
+                else:
+                    epoch_loss, epoch_accuracy = train_epoch_dp_functorch(model, memory_safe_train_loader, criterion, optimizer, augmentation_multiplicity)
         else:
             epoch_loss, epoch_accuracy = train_epoch(model, train_loader, criterion, optimizer)
 
@@ -116,11 +121,10 @@ def train_epoch(model, train_loader, criterion, optimizer):
     return avg_loss, accuracy
 
 # Train model for one epoch with differntial privacy augmentations
-def train_epoch_dp(model, train_loader, criterion, optimizer):
+def train_epoch_dp(model, train_loader, criterion, optimizer, augmentation_multiplicity):
     running_loss = 0.0
     correct_predictions = 0
     total_predictions = 0
-    augmentation_multiplicity = train_loader.dataset.augmentation_multiplicity if isinstance(train_loader.dataset, MultiTransformDataset) else 1
     model.train() # Set the model to training mode
 
     for inputs, labels in tqdm(train_loader):
@@ -141,9 +145,56 @@ def train_epoch_dp(model, train_loader, criterion, optimizer):
         loss.backward()
 
         # Average grad samples over augmentations
-        if augmentation_multiplicity != 1:
-            for param in model.parameters():
-                param.grad_sample = torch.mean(torch.stack(torch.split(param.grad_sample, augmentation_multiplicity)), dim=0)
+        for param in model.parameters():
+            param.grad_sample = torch.mean(torch.stack(torch.split(param.grad_sample, augmentation_multiplicity)), dim=0)
+        
+        # Adjust learning weights and zero gradients
+        optimizer.step()
+        optimizer.zero_grad()
+
+    # Calculate the average loss and accuracy
+    avg_loss = running_loss / (len(train_loader) * augmentation_multiplicity)
+    accuracy = 100 * correct_predictions / total_predictions
+
+    return avg_loss, accuracy
+
+def compute_sample_loss(criterion, output, label):
+    outputs, labels = output.unsqueeze(0), label.unsqueeze(0)
+    loss = criterion(outputs, labels)
+
+    return loss
+
+compute_grad = grad_and_value(compute_sample_loss) # Returns loss and gradients
+compute_grad_samples = vmap(compute_grad, im_dims=(None, 0, 0)) # compute grads over groups of batches
+
+# Train model for one epoch with differntial privacy augmentations
+def train_epoch_dp_functorch(model, train_loader, criterion, optimizer, augmentation_multiplicity):
+    running_loss = 0.0
+    correct_predictions = 0
+    total_predictions = 0
+    model.train() # Set the model to training mode
+
+    for inputs, labels in tqdm(train_loader):
+        # Move inputs and labels to the specified device
+        inputs, labels = inputs.to(static.CUDA), labels.to(static.CUDA)
+
+        # Compute predictions
+        outputs = model(inputs)
+        _, predictions = torch.max(outputs.data, 1)
+
+        # Update the running total of correct predictions and samples
+        correct_predictions += (predictions == labels).sum().item()
+        total_predictions += labels.size(0)
+
+        # Compute the loss and its gradients
+        grad_samples, group_losses = compute_grad_samples(model, criterion, inputs, labels)
+        grad_samples = [grad.detach() for grad in grad_samples]
+        loss = torch.mean(group_losses)
+        running_loss += loss.item()
+
+        # Average grad samples over augmentations
+        for param, grad in zip(model.parameters(), grad_samples):
+            param.grad_sample = torch.mean(torch.stack(torch.split(grad, augmentation_multiplicity)), dim=0)
         
         # Adjust learning weights and zero gradients
         optimizer.step()
