@@ -186,7 +186,7 @@ def train_epoch_dp_functorch(model, train_loader, criterion, optimizer, augmenta
         total_predictions += labels.size(0)
 
         # Compute the loss and its gradients
-        grad_samples, group_losses = compute_grad_samples(model, criterion, inputs, labels)
+        grad_samples, group_losses = compute_grad_samples(criterion, outputs, labels)
         grad_samples = [grad.detach() for grad in grad_samples]
         loss = torch.mean(group_losses)
         running_loss += loss.item()
