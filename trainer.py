@@ -5,7 +5,7 @@ import static
 
 from opacus.utils.batch_memory_manager import BatchMemoryManager
 from tqdm import tqdm
-from torch.func import grad_and_value, vmap
+from torch.func import grad_and_value, vmap, functional_call
 
 # Train model
 def train(model, train_loader, test_loader, criterion, optimizer, weights_path, schedulers=[], epochs=200, checkpoint_every=10, state_dict={}, 
@@ -178,7 +178,7 @@ def train_epoch_dp_functorch(model, train_loader, criterion, optimizer, augmenta
         inputs, labels = inputs.to(static.CUDA), labels.to(static.CUDA)
 
         # Compute predictions
-        outputs = model(inputs)
+        outputs = functional_call(model, model.parameters(), inputs)
         _, predictions = torch.max(outputs.data, 1)
 
         # Update the running total of correct predictions and samples
