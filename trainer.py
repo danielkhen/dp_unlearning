@@ -26,9 +26,9 @@ def train(model, train_loader, test_loader, criterion, optimizer, weights_path, 
                 optimizer=optimizer
             ) as memory_safe_train_loader:
                 if grad_sample_mode == 'no_op':
-                    epoch_loss, epoch_accuracy = train_epoch_dp(model, memory_safe_train_loader, criterion, optimizer, augmentation_multiplicity)
-                else:
                     epoch_loss, epoch_accuracy = train_epoch_dp_functorch(model, memory_safe_train_loader, criterion, optimizer, augmentation_multiplicity)
+                else:
+                    epoch_loss, epoch_accuracy = train_epoch_dp(model, memory_safe_train_loader, criterion, optimizer, augmentation_multiplicity)
         else:
             epoch_loss, epoch_accuracy = train_epoch(model, train_loader, criterion, optimizer)
 
