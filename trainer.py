@@ -26,6 +26,7 @@ def train(model, train_loader, test_loader, criterion, optimizer, weights_path, 
                 epoch_loss, epoch_accuracy = train_epoch_dp(model, memory_safe_train_loader, criterion, optimizer)
         else:
             epoch_loss, epoch_accuracy = train_epoch(model, train_loader, criterion, optimizer)
+            
         end_time = time.time()
         print(f"Epoch {epoch} - Train loss: {epoch_loss}, Train accuracy: {epoch_accuracy} , Time: {(end_time - start_time):.2f}s")
 
@@ -137,7 +138,7 @@ def train_epoch_dp(model, train_loader, criterion, optimizer):
         for param in model.parameters():
             param.grad_sample_sum = torch.zeros((stacked_inputs.size()[0], ) + param.size(), device=static.DEVICE) # Stack param size by batch size
 
-        inputs_list = [stacked_inputs] if augmentation_multiplicity == 1 else torch.unbind(stacked_inputs, dim=1) # Unbind by transforms dim
+        inputs_list = [stacked_inputs] if isinstance(train_loader.dataset, MultiTransformDataset) else torch.unbind(stacked_inputs, dim=1) # Unbind by transforms dim
         
         for inputs in inputs_list:
             # Zero gradients
@@ -154,7 +155,10 @@ def train_epoch_dp(model, train_loader, criterion, optimizer):
             # Compute the loss and its gradients
             loss = criterion(outputs, labels)
             running_loss += loss.item()
-            loss.backward()
+            loss.backward(retain_graph=True)
+
+            # Clean graph for unsaved 
+            del outputs
 
             # Accumulate gradients for this augmentation
             for param in model.parameters():
