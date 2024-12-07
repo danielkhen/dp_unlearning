@@ -25,10 +25,9 @@ class Conv2dWS(Conv2d):
 
     def forward(self, x):
         weight = self.weight
-        weight_mean = weight.mean(dim=[1, 2, 3], keepdim=True)
-        weight = weight - weight_mean
-        std = weight.view(weight.size(0), -1).std(dim=1).view(-1, 1, 1, 1) + 1e-5
-        weight = weight / std.expand_as(weight)
+        weight_mean = weight.mean(dim=(1, 2, 3), keepdim=True)
+        std = weight.std(dim=(1, 2, 3), keepdim=True)
+        weight = (weight - weight_mean) / std
 
         return functional.conv2d(x, weight, self.bias, self.stride,
                                 self.padding, self.dilation, self.groups)
