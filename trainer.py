@@ -10,7 +10,7 @@ from opacus.grad_sample.functorch import make_functional
 
 # Train model
 def train(model, train_loader, test_loader, criterion, optimizer, weights_path, schedulers=[], epochs=200, checkpoint_every=10, state_dict={}, 
-          loss_goal=0, differential_privacy=True, ma_model=None, accumulation_steps=1, augmentation_multiplicity=1, grad_sample_mode='no_op'):
+          loss_goal=0, differential_privacy=True, ma_model=None, max_physical_batch_size=128, augmentation_multiplicity=1, grad_sample_mode='no_op'):
     training_start_time = time.time()
     state_dict['epochs'] = []
     state_dict['checkpoints'] = []
@@ -21,13 +21,17 @@ def train(model, train_loader, test_loader, criterion, optimizer, weights_path, 
         start_time = time.time()
 
         if differential_privacy:
-            # Not using BatchMemoryManager as it returns incomplete batches
-            if grad_sample_mode == 'no_op':
-                epoch_loss, epoch_accuracy = train_epoch_dp_functorch(model, train_loader, criterion, optimizer, augmentation_multiplicity, accumulation_steps)
-            else:
-                epoch_loss, epoch_accuracy = train_epoch_dp(model, train_loader, criterion, optimizer, augmentation_multiplicity, accumulation_steps)
+            with BatchMemoryManager(
+                data_loader=train_loader, 
+                max_physical_batch_size=max_physical_batch_size, 
+                optimizer=optimizer
+            ) as memory_safe_train_loader:
+                if grad_sample_mode == 'no_op':
+                    epoch_loss, epoch_accuracy = train_epoch_dp_functorch(model, memory_safe_train_loader, criterion, optimizer, augmentation_multiplicity)
+                else:
+                    epoch_loss, epoch_accuracy = train_epoch_dp(model, memory_safe_train_loader, criterion, optimizer, augmentation_multiplicity)
         else:
-            epoch_loss, epoch_accuracy = train_epoch(model, train_loader, criterion, optimizer, accumulation_steps)
+            epoch_loss, epoch_accuracy = train_epoch(model, train_loader, criterion, optimizer)
 
         end_time = time.time()
         print(f"Epoch {epoch} - Train loss: {epoch_loss}, Train accuracy: {epoch_accuracy} , Time: {(end_time - start_time):.2f}s")
@@ -82,13 +86,13 @@ def train(model, train_loader, test_loader, criterion, optimizer, weights_path, 
 
 
 # Train model for one epoch
-def train_epoch(model, train_loader, criterion, optimizer, accumulation_steps=1):
+def train_epoch(model, train_loader, criterion, optimizer):
     running_loss = 0.0
     correct_predictions = 0
     total_predictions = 0
     model.train() # Set the model to training mode
 
-    for idx, (inputs, labels) in enumerate(tqdm(train_loader)):
+    for inputs, labels in tqdm(train_loader):
         # Move inputs and labels to the specified device
         inputs, labels = inputs.to(static.CUDA), labels.to(static.CUDA)
 
@@ -106,9 +110,8 @@ def train_epoch(model, train_loader, criterion, optimizer, accumulation_steps=1)
         loss.backward()
 
         # Adjust learning weights and zero gradients
-        if idx % accumulation_steps == 0 or idx == len(train_loader):
-            optimizer.step()
-            optimizer.zero_grad()
+        optimizer.step()
+        optimizer.zero_grad()
 
     # Calculate the average loss and accuracy
     avg_loss = running_loss / len(train_loader)
@@ -117,17 +120,13 @@ def train_epoch(model, train_loader, criterion, optimizer, accumulation_steps=1)
     return avg_loss, accuracy
 
 # Train model for one epoch with differntial privacy augmentations
-def train_epoch_dp(model, train_loader, criterion, optimizer, augmentation_multiplicity, accumulation_steps=1):
+def train_epoch_dp(model, train_loader, criterion, optimizer, augmentation_multiplicity):
     running_loss = 0.0
     correct_predictions = 0
     total_predictions = 0
     model.train() # Set the model to training mode
 
-    for idx, (inputs, labels) in enumerate(tqdm(train_loader), start=1):
-        # Skip optimzer step when not accumulation or final batch
-        if idx % accumulation_steps != 0 and idx != len(train_loader):
-            optimizer.signal_skip_step()
-
+    for inputs, labels in tqdm(train_loader):
         # Move inputs and labels to the specified device
         inputs, labels = inputs.to(static.CUDA), labels.to(static.CUDA)
 
@@ -159,7 +158,7 @@ def train_epoch_dp(model, train_loader, criterion, optimizer, augmentation_multi
     return avg_loss, accuracy
 
 # Train model for one epoch with differntial privacy augmentations
-def train_epoch_dp_functorch(model, train_loader, criterion, optimizer, augmentation_multiplicity, accumulation_steps=1):
+def train_epoch_dp_functorch(model, train_loader, criterion, optimizer, augmentation_multiplicity):
     running_loss = 0.0
     correct_predictions = 0
     total_predictions = 0
@@ -179,11 +178,7 @@ def train_epoch_dp_functorch(model, train_loader, criterion, optimizer, augmenta
     compute_grad = grad_and_value(compute_sample_loss) # Returns loss and gradients
     compute_grad_samples = vmap(compute_grad, in_dims=(None, 0, 0)) # compute grads over groups of batches
 
-    for idx, (inputs, labels) in enumerate(tqdm(train_loader), start=1):
-        # Skip optimzer step when not accumulation or final batch
-        if idx % accumulation_steps != 0 and idx != len(train_loader):
-            optimizer.signal_skip_step()
-
+    for inputs, labels in tqdm(train_loader):
         # Move inputs and labels to the specified device
         inputs, labels = inputs.to(static.CUDA), labels.to(static.CUDA)
 
