@@ -66,7 +66,8 @@ def main():
             target_epsilon=args.epsilon,
             target_delta=args.delta,
             max_grad_norm=args.max_grad_norm,
-            grad_sample_mode=args.grad_sample_mode
+            grad_sample_mode=args.grad_sample_mode,
+            poisson_sampling=False
         )
 
     starting_state_dict={

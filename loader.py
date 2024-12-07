@@ -7,27 +7,24 @@ from timm.models.vision_transformer import VisionTransformer
 from torchvision import datasets
 from opacus.validators import ModuleValidator
 from torch.nn import LayerNorm
-from torch.utils.data import BatchSampler, DataLoader
+from torch.utils.data import Sampler, DataLoader
     
-class MultiplicityBatchSampler(BatchSampler):
-    def __init__(self, dataset, batch_size, augmentation_multiplicity):
-        self.batch_size = batch_size
+class MultiplicitySampler(Sampler):
+    def __init__(self, dataset, augmentation_multiplicity):
+        self.dataset = dataset
         self.augmentation_multiplicity = augmentation_multiplicity
-        self.samples_per_batch = batch_size // augmentation_multiplicity
-        self.samples_count = len(dataset)
+        self.num_samples = len(dataset) // augmentation_multiplicity
 
     def __iter__(self):
-        sample_indices = torch.randperm(self.samples_count)
-        per_batch_indices = sample_indices.split(self.samples_per_batch)
+        sample_indices = (torch.randperm(self.num_samples)).tolist()
 
-        # Repeat each index augmentation multiplicity times
-        for batch_indices in per_batch_indices:
-            batch = batch_indices.repeat_interleave(self.augmentation_multiplicity)
-            
-            yield batch.tolist()
+        for sample_index in sample_indices:
+            for _ in range(self.augmentation_multiplicity):
+                yield sample_index
 
     def __len__(self):
-        return math.ceil(self.samples_count / self.samples_per_batch)
+        return len(self.dataset) * self.augmentation_multiplicity
+    
 
 def load_dataset(dataset, dataset_transform, testset_transform, batch_size, num_workers, augmentation_multiplicity=1):
     dataset = getattr(datasets, dataset)
@@ -36,11 +33,11 @@ def load_dataset(dataset, dataset_transform, testset_transform, batch_size, num_
     trainset = dataset(root='./data', train=True, download=True, transform=dataset_transform)
     testset = dataset(root='./data', train=False, download=True, transform=testset_transform)
 
-    # Random batch sampler for augmentation multiplicity
-    batch_sampler = MultiplicityBatchSampler(trainset, batch_size, augmentation_multiplicity)
+    # Random sampler for augmentation multiplicity
+    sampler = MultiplicitySampler(trainset, augmentation_multiplicity)
 
     # Load dataset
-    trainloader = DataLoader(trainset, batch_sampler=batch_sampler, num_workers=num_workers)
+    trainloader = DataLoader(trainset, batch_size=batch_size, num_workers=num_workers, sampler=sampler)
     testloader = DataLoader(testset, batch_size=batch_size, num_workers=num_workers, shuffle=False)
 
     return trainloader, testloader
