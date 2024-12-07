@@ -22,8 +22,8 @@ class MultiplicityBatchSampler(BatchSampler):
 
         # Repeat each index augmentation multiplicity times
         for batch_indices in per_batch_indices:
-            batch = batch_indices[0].repeat_interleave(self.augmentation_multiplicity)
-
+            batch = batch_indices.repeat_interleave(self.augmentation_multiplicity)
+            
             yield batch.tolist()
 
     def __len__(self):

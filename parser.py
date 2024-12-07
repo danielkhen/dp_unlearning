@@ -14,7 +14,7 @@ parser.add_argument('--optimizer', '-o', default='SGD', type=str, help='optimize
 parser.add_argument('--input-weights', '-i', default=None, type=str, help='path of pth file for pre-trained weights')
 parser.add_argument('--loss-goal', default=0, type=float, help='average loss goal to stop training at')
 parser.add_argument('--augmentation-multiplicity', '--am', default=1, type=int, help='Use multiple augmentations per batch, does not increate batch size')
-parser.add_argument('--weight_standardization', '--ws', action='store_true', help='Replace Conv2D layers that come before normallization layers with weight standardization version')
+parser.add_argument('--weight-standardization', '--ws', action='store_true', help='Replace Conv2D layers that come before normallization layers with weight standardization version')
 parser.add_argument('--accumulation-steps', '--as', default=128, type=int, help='after every how many steps should accumulate gradients')
 
 parser.add_argument('--cosine-anealing', '--ca', action='store_true', help='use learning rate cosine anealing scheduler')
