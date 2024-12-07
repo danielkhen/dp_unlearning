@@ -11,19 +11,18 @@ from torch.utils.data import Sampler, DataLoader
     
 class MultiplicitySampler(Sampler):
     def __init__(self, dataset, augmentation_multiplicity):
-        self.dataset = dataset
+        self.samples_count = len(dataset)
         self.augmentation_multiplicity = augmentation_multiplicity
-        self.num_samples = len(dataset) // augmentation_multiplicity
 
     def __iter__(self):
-        sample_indices = (torch.randperm(self.num_samples)).tolist()
+        sample_indices = (torch.randperm(self.samples_count)).tolist()
 
         for sample_index in sample_indices:
             for _ in range(self.augmentation_multiplicity):
                 yield sample_index
 
     def __len__(self):
-        return len(self.dataset) * self.augmentation_multiplicity
+        return self.samples_count * self.augmentation_multiplicity
     
 
 def load_dataset(dataset, dataset_transform, testset_transform, batch_size, num_workers, augmentation_multiplicity=1):
