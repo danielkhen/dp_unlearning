@@ -40,7 +40,7 @@ def load_dataset(dataset, dataset_transform, testset_transform, batch_size, num_
     batch_sampler = MultiplicityBatchSampler(trainset, batch_size, augmentation_multiplicity)
 
     # Load dataset
-    trainloader = DataLoader(trainset, batch_size=batch_size, num_workers=num_workers, batch_sampler=batch_sampler)
+    trainloader = DataLoader(trainset, batch_sampler=batch_sampler, num_workers=num_workers)
     testloader = DataLoader(testset, batch_size=batch_size, num_workers=num_workers, shuffle=False)
 
     return trainloader, testloader
