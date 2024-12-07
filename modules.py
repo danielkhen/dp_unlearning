@@ -47,7 +47,7 @@ def standardize_model(model):
         if isinstance(child, (Conv2d)) and isinstance(next_child, NORM_LAYERS):
             setattr(model, name, Conv2dWS(child))
         else:
-            Conv2dWS.replace_conv2d_with_ws(child) # Continue recursivly for child modules
+            standardize_model(child) # Continue recursivly for child modules
 
 
 NORM_LAYERS = (GroupNorm, LayerNorm, BatchNorm2d)
