@@ -15,7 +15,6 @@ parser.add_argument('--input-weights', '-i', default=None, type=str, help='path 
 parser.add_argument('--loss-goal', default=0, type=float, help='average loss goal to stop training at')
 parser.add_argument('--augmentation-multiplicity', '--am', default=1, type=int, help='Use multiple augmentations per batch, does not increate batch size')
 parser.add_argument('--weight-standardization', '--ws', action='store_true', help='Replace Conv2D layers that come before normallization layers with weight standardization version')
-parser.add_argument('--accumulation-steps', '--as', default=128, type=int, help='after every how many steps should accumulate gradients')
 
 parser.add_argument('--cosine-anealing', '--ca', action='store_true', help='use learning rate cosine anealing scheduler')
 parser.add_argument('--exponential-moving-average', '--ema', action='store_true', help='use exponential moving average scheduler')
@@ -26,6 +25,7 @@ parser.add_argument('--num-workers', default=8, type=int, help='number of worker
 parser.add_argument('--checkpoint-every', default=10, type=int, help='number of epochs to checkpoint the model')
 
 parser.add_argument('--differential-privacy', '--dp', action='store_true', help='wether to train the model with differential privacy')
+parser.add_argument('--max-physical-batch-size', '--maxbs', default=128, type=int, help='maximum physical batch size for holding grad samples in memory')
 parser.add_argument('--epsilon', default=8.0, type=float, help='epsilon for differential privacy')
 parser.add_argument('--delta', default=1e-5, type=float, help='delta for differential privacy')
 parser.add_argument('--max-grad-norm', default=1.0, type=float, help='maximum gradient norm for differential privacy')
