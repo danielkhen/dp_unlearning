@@ -4,7 +4,7 @@ import tester
 import static
 
 from opacus.utils.batch_memory_manager import BatchMemoryManager
-from tqdm.notebook import tqdm
+from tqdm import tqdm_notebook as tqdm
 from torch.func import grad_and_value, vmap, functional_call
 from opacus.grad_sample.functorch import make_functional
 
@@ -34,7 +34,7 @@ def train(model, train_loader, test_loader, criterion, optimizer, weights_path, 
             epoch_loss, epoch_accuracy = train_epoch(model, train_loader, criterion, optimizer)
 
         end_time = time.time()
-        #tqdm.write(f"Epoch {epoch} - Train loss: {epoch_loss}, Train accuracy: {epoch_accuracy} , Time: {(end_time - start_time):.2f}s")
+        tqdm.write(f"Epoch {epoch} - Train loss: {epoch_loss}, Train accuracy: {epoch_accuracy} , Time: {(end_time - start_time):.2f}s")
 
         state_dict['epochs'].append({
             'loss': epoch_loss,
