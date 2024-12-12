@@ -4,7 +4,6 @@ import tester
 import static
 
 from opacus.utils.batch_memory_manager import BatchMemoryManager
-from tqdm import tqdm
 from torch.func import grad_and_value, vmap, functional_call
 from opacus.grad_sample.functorch import make_functional
 
@@ -16,7 +15,7 @@ def train(model, train_loader, test_loader, criterion, optimizer, weights_path, 
     state_dict['checkpoints'] = []
     checkpoint_model = ma_model.module if ma_model else model
 
-    for epoch in tqdm(range(1, epochs + 1)):
+    for epoch in range(1, epochs + 1):
         # Train for one epoch and calculate the average loss
         start_time = time.time()
 
@@ -34,7 +33,7 @@ def train(model, train_loader, test_loader, criterion, optimizer, weights_path, 
             epoch_loss, epoch_accuracy = train_epoch(model, train_loader, criterion, optimizer)
 
         end_time = time.time()
-        tqdm.write(f"Epoch {epoch} - Train loss: {epoch_loss}, Train accuracy: {epoch_accuracy} , Time: {(end_time - start_time):.2f}s")
+        print(f"Epoch {epoch} - Train loss: {epoch_loss}, Train accuracy: {epoch_accuracy} , Time: {(end_time - start_time):.2f}s")
 
         state_dict['epochs'].append({
             'loss': epoch_loss,
@@ -58,7 +57,7 @@ def train(model, train_loader, test_loader, criterion, optimizer, weights_path, 
         if epoch % checkpoint_every == 0:
             # Output model statistics
             test_avg_loss, test_accuracy = tester.test(checkpoint_model, test_loader, criterion)
-            tqdm.write(f"Checkpoint model at epoch {epoch} with: \n" +
+            print(f"Checkpoint model at epoch {epoch} with: \n" +
                   f"Test loss: {test_avg_loss}, Test accuracy: {test_accuracy:.2f}")
 
             state_dict['checkpoints'].append({
@@ -92,7 +91,7 @@ def train_epoch(model, train_loader, criterion, optimizer):
     total_predictions = 0
     model.train() # Set the model to training mode
 
-    for inputs, labels in tqdm(train_loader):
+    for inputs, labels in train_loader:
         # Move inputs and labels to the specified device
         inputs, labels = inputs.to(static.CUDA), labels.to(static.CUDA)
 
@@ -126,7 +125,7 @@ def train_epoch_dp(model, train_loader, criterion, optimizer, augmentation_multi
     total_predictions = 0
     model.train() # Set the model to training mode
 
-    for inputs, labels in tqdm(train_loader):
+    for inputs, labels in train_loader:
         # Move inputs and labels to the specified device
         inputs, labels = inputs.to(static.CUDA), labels.to(static.CUDA)
 
@@ -178,7 +177,7 @@ def train_epoch_dp_functorch(model, train_loader, criterion, optimizer, augmenta
     compute_grad = grad_and_value(compute_sample_loss) # Returns loss and gradients
     compute_grad_samples = vmap(compute_grad, in_dims=(None, 0, 0)) # compute grads over groups of batches
 
-    for inputs, labels in tqdm(train_loader):
+    for inputs, labels in train_loader:
         # Move inputs and labels to the specified device
         inputs, labels = inputs.to(static.CUDA), labels.to(static.CUDA)
 
