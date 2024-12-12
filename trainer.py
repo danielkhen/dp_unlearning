@@ -4,7 +4,7 @@ import tester
 import static
 
 from opacus.utils.batch_memory_manager import BatchMemoryManager
-from tqdm import tqdm_notebook as tqdm
+from tqdm import tqdm
 from torch.func import grad_and_value, vmap, functional_call
 from opacus.grad_sample.functorch import make_functional
 
