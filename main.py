@@ -67,7 +67,7 @@ def main():
             target_delta=args.delta,
             max_grad_norm=args.max_grad_norm,
             grad_sample_mode=args.grad_sample_mode,
-            poisson_sampling=False
+            poisson_sampling=False # Must be false so incomplete batches wouldn't be counted
         )
 
     starting_state_dict={

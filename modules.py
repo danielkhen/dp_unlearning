@@ -22,7 +22,6 @@ class Conv2dWS(Conv2d):
         if original_conv.bias is not None:
             self.bias.data = original_conv.bias.data.clone()
 
-
     def forward(self, x):
         weight = self.weight
         weight_mean = weight.mean(dim=(1, 2, 3), keepdim=True)
