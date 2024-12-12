@@ -68,17 +68,16 @@ def prune_model(model, target_children, amount):
     return get_trainable_parameters(model) - target_parameters_delta
 
 # Target children are assumed to contain the blocks to replace
-def adapter_model(model, target_children, adapter_block, freeze_blocks=True):
+def adapter_model(model, target_children, adapter_block_class, **kwargs):
     for child_name in target_children:
         child = getattr(model, child_name)
 
         for name, block in child.named_children():
-            adapter_block = adapter_block(block)
+            adapter_block = adapter_block_class(block, **kwargs)
             setattr(child, name, adapter_block)
 
-            if freeze_blocks:
-                for param in block.parameters():
-                    param.requires_grad = False
+            for param in block.parameters():
+                param.requires_grad = False
 
     model.to(static.CUDA)
 

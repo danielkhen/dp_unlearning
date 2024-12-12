@@ -1,5 +1,4 @@
 import torch
-import static
 
 from torch import nn
 
@@ -7,7 +6,7 @@ NORM_LAYERS = (nn.GroupNorm, nn.LayerNorm, nn.BatchNorm2d)
 
 class ConvAdapter(nn.Module):
     def __init__(self, inplanes, outplanes, width, 
-                kernel_size=3, padding=1, stride=1, groups=1, dilation=1, norm_layer=None, act_layer=None, weight_standardization=False, **kwargs):
+                kernel_size=3, padding=1, stride=1, dilation=1, norm_layer=None, act_layer=None, weight_standardization=False, **kwargs):
         super().__init__()
         if norm_layer is None:
             norm_layer = nn.Identity
@@ -15,11 +14,13 @@ class ConvAdapter(nn.Module):
             act_layer = nn.Identity
 
         # Depth-wise conv
-        self.conv1 = nn.Conv2d(inplanes, width, kernel_size=kernel_size, stride=stride, groups=groups, padding=padding, dilation=int(dilation))
+        self.conv1 = nn.Conv2d(inplanes, width, kernel_size=kernel_size, stride=stride, groups=width, padding=padding, dilation=int(dilation), bias=False)
+        nn.init.zeros_(self.conv1.weight)
         self.norm1 = norm_layer(width)
         self.act = act_layer()
         # Point-wise conv
-        self.conv2 = nn.Conv2d(width, outplanes, kernel_size=1, stride=1)
+        self.conv2 = nn.Conv2d(width, outplanes, kernel_size=1, stride=1, bias=False)
+        nn.init.zeros_(self.conv2.weight)
         self.norm2 = norm_layer(outplanes)
         self.se = nn.Parameter(1.0 * torch.ones((1, outplanes, 1, 1)), requires_grad=True)
 
@@ -44,7 +45,7 @@ class ParallelBlockAdapter(nn.Module):
         self.residual_block = block
         self.bottleneck_ratio = bottleneck_ratio
         conv = block.conv1
-        self.adapter = ConvAdapter(conv.in_channels, conv.out_channels, width=conv.in_channels // bottleneck_ratio, groups=conv.in_channels // bottleneck_ratio,
+        self.adapter = ConvAdapter(conv.in_channels, conv.out_channels, width=conv.in_channels // bottleneck_ratio,
                                    kernel_size=conv.kernel_size, stride=conv.stride, padding=conv.padding, weight_standardization=weight_standardization, act_layer=nn.ReLU)
     
     def forward(self, x):
@@ -59,8 +60,8 @@ class SequentialBlockAdapter(nn.Module):
         self.residual_block = block
         self.bottleneck_ratio = bottleneck_ratio
         conv = block.conv2
-        self.adapter = ConvAdapter(conv.in_channels, conv.out_channels, width=conv.in_channels // bottleneck_ratio, groups=conv.in_channels // bottleneck_ratio,
-                                   kernel_size=conv.kernel_size, stride=conv.stride, padding=conv.padding, weight_standardization=weight_standardization, act_layer=nn.ReLU)
+        self.adapter = ConvAdapter(conv.out_channels, conv.out_channels, width=conv.out_channels // bottleneck_ratio,
+                                   kernel_size=conv.kernel_size, padding=conv.padding, weight_standardization=weight_standardization, act_layer=nn.ReLU)
     
     def forward(self, x):
         residual = self.residual_block(x)

@@ -23,6 +23,7 @@ def main():
     if args.input_weights:
         state_dict = torch.load(args.input_weights)
         model_state_dict = state_dict['model']
+
         print(f"Loading pretrained model with Test loss: {state_dict['loss']}, Test accuracy: {state_dict['accuracy']:.2f}")
 
     if args.test:
@@ -44,11 +45,13 @@ def main():
             case 'prune-grads':
                 trainable_parameters = fine_tuning.prune_gradients(model, args.peft_targets, args.prune_amount)
             case 'sequential-adapter':
-                adapter_block = lambda block: modules.SequentialBlockAdapter(block, args.adapter_bottleneck_ratio, args.weight_standardization)
-                trainable_parameters = fine_tuning.adapter_model(model, args.peft_targets, adapter_block)
+                adapter_block = modules.SequentialBlockAdapter
+                trainable_parameters = fine_tuning.adapter_model(model, args.peft_targets, adapter_block, 
+                                                                 bottleneck_ratio=args.bottleneck_ratio, weight_standardization=args.weight_standardization)
             case 'parallel-adapter':
-                adapter_block = lambda block: modules.ParallelBlockAdapter(block, args.bottleneck_ratio, args.weight_standardization)
-                trainable_parameters = fine_tuning.adapter_model(model, args.peft_targets, adapter_block)
+                adapter_block = modules.ParallelBlockAdapter
+                trainable_parameters = fine_tuning.adapter_model(model, args.peft_targets, adapter_block, 
+                                                                 bottleneck_ratio=args.bottleneck_ratio, weight_standardization=args.weight_standardization)
 
         print(f"Number of trainable parameters using PEFT method {args.peft}: {trainable_parameters}")
 
