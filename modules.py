@@ -15,12 +15,10 @@ class ConvAdapter(nn.Module):
 
         # Depth-wise conv
         self.conv1 = nn.Conv2d(inplanes, width, kernel_size=kernel_size, stride=stride, groups=width, padding=padding, dilation=int(dilation), bias=False)
-        nn.init.zeros_(self.conv1.weight)
         self.norm1 = norm_layer(width)
         self.act = act_layer()
         # Point-wise conv
         self.conv2 = nn.Conv2d(width, outplanes, kernel_size=1, stride=1, bias=False)
-        nn.init.zeros_(self.conv2.weight)
         self.norm2 = norm_layer(outplanes)
         self.se = nn.Parameter(1.0 * torch.ones((1, outplanes, 1, 1)), requires_grad=True)
 
