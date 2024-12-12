@@ -34,7 +34,7 @@ def train(model, train_loader, test_loader, criterion, optimizer, weights_path, 
             epoch_loss, epoch_accuracy = train_epoch(model, train_loader, criterion, optimizer)
 
         end_time = time.time()
-        tqdm.write(f"Epoch {epoch} - Train loss: {epoch_loss}, Train accuracy: {epoch_accuracy} , Time: {(end_time - start_time):.2f}s")
+        print(f"Epoch {epoch} - Train loss: {epoch_loss}, Train accuracy: {epoch_accuracy} , Time: {(end_time - start_time):.2f}s")
 
         state_dict['epochs'].append({
             'loss': epoch_loss,
@@ -58,7 +58,7 @@ def train(model, train_loader, test_loader, criterion, optimizer, weights_path, 
         if epoch % checkpoint_every == 0:
             # Output model statistics
             test_avg_loss, test_accuracy = tester.test(checkpoint_model, test_loader, criterion)
-            tqdm.write(f"Checkpoint model at epoch {epoch} with: \n" +
+            print(f"Checkpoint model at epoch {epoch} with: \n" +
                   f"Test loss: {test_avg_loss}, Test accuracy: {test_accuracy:.2f}")
 
             state_dict['checkpoints'].append({
