@@ -6,20 +6,16 @@ NORM_LAYERS = (nn.GroupNorm, nn.LayerNorm, nn.BatchNorm2d)
 
 class ConvAdapter(nn.Module):
     def __init__(self, inplanes, outplanes, width, 
-                kernel_size=3, padding=1, stride=1, dilation=1, norm_layer=None, act_layer=None, weight_standardization=False, **kwargs):
+                kernel_size=3, padding=1, stride=1, dilation=1, weight_standardization=False, **kwargs):
         super().__init__()
-        if norm_layer is None:
-            norm_layer = nn.Identity
-        if act_layer is None:
-            act_layer = nn.Identity
 
         # Depth-wise conv
         self.conv1 = nn.Conv2d(inplanes, width, kernel_size=kernel_size, stride=stride, groups=width, padding=padding, dilation=int(dilation), bias=False)
-        self.norm1 = norm_layer(width)
-        self.act = act_layer()
+        self.norm1 = nn.GroupNorm(16, width)
+        self.act = nn.ReLU()
         # Point-wise conv
         self.conv2 = nn.Conv2d(width, outplanes, kernel_size=1, stride=1, bias=False)
-        self.norm2 = norm_layer(outplanes)
+        self.norm2 = nn.GroupNorm(16, width)
         self.se = nn.Parameter(1.0 * torch.ones((1, outplanes, 1, 1)), requires_grad=True)
 
         if weight_standardization:
@@ -44,7 +40,7 @@ class ParallelBlockAdapter(nn.Module):
         self.bottleneck_ratio = bottleneck_ratio
         conv = block.conv1
         self.adapter = ConvAdapter(conv.in_channels, conv.out_channels, width=int(conv.in_channels // bottleneck_ratio),
-                                   kernel_size=conv.kernel_size, stride=conv.stride, padding=conv.padding, weight_standardization=weight_standardization, act_layer=nn.ReLU)
+                                   kernel_size=conv.kernel_size, stride=conv.stride, padding=conv.padding, weight_standardization=weight_standardization)
     
     def forward(self, x):
         residual = self.residual_block(x)
