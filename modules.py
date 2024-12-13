@@ -12,11 +12,12 @@ class ConvAdapter(nn.Module):
         # Depth-wise conv
         self.conv1 = nn.Conv2d(inplanes, width, kernel_size=kernel_size, stride=stride, groups=width, padding=padding, dilation=int(dilation), bias=False)
         self.norm1 = nn.GroupNorm(16, width)
-        self.act = nn.ReLU()
+        self.act1 = nn.ReLU()
         # Point-wise conv
         self.conv2 = nn.Conv2d(width, outplanes, kernel_size=1, stride=1, bias=False)
-        #self.norm2 = nn.GroupNorm(16, outplanes)
-        self.se = nn.Parameter(1.0 * torch.ones((1, outplanes, 1, 1)), requires_grad=True)
+        self.norm2 = nn.GroupNorm(16, outplanes)
+        self.act2 = nn.ReLU()
+        self.se = nn.Parameter(1.0 * torch.zeros((1, outplanes, 1, 1)), requires_grad=True)
 
         if weight_standardization:
             self.conv1=Conv2dWS(self.conv1)
@@ -26,9 +27,10 @@ class ConvAdapter(nn.Module):
     def forward(self, x):
         out = self.conv1(x)
         out = self.norm1(out)
-        out = self.act(out)
+        out = self.act1(out)
         out = self.conv2(out)
-        #out = self.norm2(out)
+        out = self.norm2(out)
+        out = self.act2(out)
         out = out * self.se
 
         return out
