@@ -15,7 +15,7 @@ class ConvAdapter(nn.Module):
         self.act = nn.ReLU()
         # Point-wise conv
         self.conv2 = nn.Conv2d(width, outplanes, kernel_size=1, stride=1, bias=False)
-        self.norm2 = nn.GroupNorm(16, width)
+        #self.norm2 = nn.GroupNorm(16, outplanes)
         self.se = nn.Parameter(1.0 * torch.ones((1, outplanes, 1, 1)), requires_grad=True)
 
         if weight_standardization:
@@ -28,7 +28,7 @@ class ConvAdapter(nn.Module):
         out = self.norm1(out)
         out = self.act(out)
         out = self.conv2(out)
-        out = self.norm2(out)
+        #out = self.norm2(out)
         out = out * self.se
 
         return out
