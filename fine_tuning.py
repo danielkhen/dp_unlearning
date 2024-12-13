@@ -28,7 +28,6 @@ def get_lora_model(model, target_children, rank, lora_alpha, lora_dropout):
     
     model = get_peft_model(model, LoraConfig(target_modules=target_modules, r=rank, lora_alpha=lora_alpha, lora_dropout=lora_dropout))
     unfreeze_peft_model(model)
-    model.to(static.CUDA)
 
     return model, get_trainable_parameters(model)
 
@@ -63,22 +62,30 @@ def prune_model(model, target_children, amount):
     for module in target_modules:
         prune.l1_unstructured(module, 'weight', amount=amount)
 
-    model.to(static.CUDA)
-
     return get_trainable_parameters(model) - target_parameters_delta
 
 # Target children are assumed to contain the blocks to replace
-def adapter_model(model, target_children, adapter_block_class, **kwargs):
+def replace_blocks(model, target_children, block_class, **kwargs):
     for child_name in target_children:
         child = getattr(model, child_name)
 
         for name, block in child.named_children():
-            adapter_block = adapter_block_class(block, **kwargs)
-            setattr(child, name, adapter_block)
+            setattr(child, name, block_class(block, **kwargs))
 
             for param in block.parameters():
                 param.requires_grad = False
 
-    model.to(static.CUDA)
+    return get_trainable_parameters(model)
+
+# Target children are assumed to contain the blocks to replace
+def replace_modules(model, target_children, module_class, **kwargs):
+    for child_name in target_children:
+        child = getattr(model, child_name)
+
+        for name, block in child.named_children():
+            setattr(child, name, module_class(block, **kwargs))
+
+            for param in block.parameters():
+                param.requires_grad = False
 
     return get_trainable_parameters(model)

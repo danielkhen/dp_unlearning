@@ -100,6 +100,4 @@ def model_factory(model_name, state_dict=None, fix_dp=True, pretrained=False):
     if state_dict:
         model.load_state_dict(state_dict)
 
-    model.to(static.CUDA)
-
     return model

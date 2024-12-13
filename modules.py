@@ -6,17 +6,17 @@ NORM_LAYERS = (nn.GroupNorm, nn.LayerNorm, nn.BatchNorm2d)
 
 class ConvAdapter(nn.Module):
     def __init__(self, inplanes, outplanes, width, 
-                kernel_size=3, padding=1, stride=1, dilation=1, weight_standardization=False, **kwargs):
+                kernel_size=3, padding=1, stride=1, dilation=1, act_layer=nn.ReLU, norm_layer=nn.Identity, weight_standardization=False, **kwargs):
         super().__init__()
 
         # Depth-wise conv
         self.conv1 = nn.Conv2d(inplanes, width, kernel_size=kernel_size, stride=stride, groups=width, padding=padding, dilation=int(dilation), bias=False)
-        self.norm1 = nn.GroupNorm(16, width)
-        self.act1 = nn.ReLU()
+        self.norm1 = norm_layer(width)
+        self.act1 = act_layer()
         # Point-wise conv
         self.conv2 = nn.Conv2d(width, outplanes, kernel_size=1, stride=1, bias=False)
-        self.norm2 = nn.GroupNorm(16, outplanes)
-        self.act2 = nn.ReLU()
+        self.norm2 = norm_layer(outplanes)
+        self.act2 = act_layer()
         self.se = nn.Parameter(1.0 * torch.zeros((1, outplanes, 1, 1)), requires_grad=True)
 
         if weight_standardization:
@@ -36,12 +36,11 @@ class ConvAdapter(nn.Module):
         return out
     
 class ParallelBlockAdapter(nn.Module):
-    def __init__(self, block, bottleneck_ratio=4, weight_standardization=False):
+    def __init__(self, block, bottleneck_ratio, weight_standardization=False):
         super(ParallelBlockAdapter, self).__init__()
         self.residual_block = block
-        self.bottleneck_ratio = bottleneck_ratio
         conv = block.conv1
-        self.adapter = ConvAdapter(conv.in_channels, conv.out_channels, width=int(conv.in_channels // bottleneck_ratio),
+        self.adapter = ConvAdapter(conv.in_channels, conv.out_channels, width=int(conv.in_channels // bottleneck_ratio), norm_layer=lambda channels: nn.GroupNorm(16, channels),
                                    kernel_size=conv.kernel_size, stride=conv.stride, padding=conv.padding, weight_standardization=weight_standardization)
     
     def forward(self, x):
@@ -51,19 +50,44 @@ class ParallelBlockAdapter(nn.Module):
         return residual + adapter_output
     
 class SequentialBlockAdapter(nn.Module):
-    def __init__(self, block, bottleneck_ratio=4, weight_standardization=False):
+    def __init__(self, block, bottleneck_ratio, weight_standardization=False):
         super(SequentialBlockAdapter, self).__init__()
         self.residual_block = block
-        self.bottleneck_ratio = bottleneck_ratio
         conv = block.conv2
-        self.adapter = ConvAdapter(conv.out_channels, conv.out_channels, width=int(conv.out_channels // bottleneck_ratio),
-                                   kernel_size=conv.kernel_size, padding=conv.padding, weight_standardization=weight_standardization, act_layer=nn.ReLU)
+        self.adapter = ConvAdapter(conv.out_channels, conv.out_channels, width=int(conv.out_channels // bottleneck_ratio), norm_layer=lambda channels: nn.GroupNorm(16, channels),
+                                   kernel_size=conv.kernel_size, padding=conv.padding, weight_standardization=weight_standardization)
     
     def forward(self, x):
         residual = self.residual_block(x)
         adapter_output = self.adapter(residual)
         
         return residual + adapter_output
+    
+class ParallelConvAdapter(nn.Module):
+    def __init__(self, conv, bottleneck_ratio, weight_standardization=False):
+        super(ParallelConvAdapter, self).__init__()
+        self.conv = conv
+        self.adapter = ConvAdapter(conv.in_channels, conv.out_channels, width=int(conv.in_channels // bottleneck_ratio), stride=conv.stride,
+                                   kernel_size=conv.kernel_size, padding=conv.padding, weight_standardization=weight_standardization)
+    
+    def forward(self, x):
+        conv = self.conv(x)
+        adapter_output = self.adapter(x)
+        
+        return conv + adapter_output
+    
+class SequentialConvAdapter(nn.Module):
+    def __init__(self, conv, bottleneck_ratio, weight_standardization=False):
+        super(SequentialConvAdapter, self).__init__()
+        self.conv = conv
+        self.adapter = ConvAdapter(conv.out_channels, conv.out_channels, width=int(conv.out_channels // bottleneck_ratio),
+                                   kernel_size=conv.kernel_size, padding=conv.padding, weight_standardization=weight_standardization)
+    
+    def forward(self, x):
+        conv = self.conv(x)
+        adapter_output = self.adapter(conv)
+        
+        return conv + adapter_output
 
 class Conv2dWS(nn.Conv2d):
     def __init__(self, original_conv):

@@ -45,12 +45,16 @@ def main():
             case 'prune-grads':
                 trainable_parameters = fine_tuning.prune_gradients(model, args.peft_targets, args.prune_amount)
             case 'sequential-adapter':
-                adapter_block = modules.SequentialBlockAdapter
-                trainable_parameters = fine_tuning.adapter_model(model, args.peft_targets, adapter_block, 
+                trainable_parameters = fine_tuning.adapter_model(model, args.peft_targets, modules.SequentialBlockAdapter, 
                                                                  bottleneck_ratio=args.bottleneck_ratio, weight_standardization=args.weight_standardization)
             case 'parallel-adapter':
-                adapter_block = modules.ParallelBlockAdapter
-                trainable_parameters = fine_tuning.adapter_model(model, args.peft_targets, adapter_block, 
+                trainable_parameters = fine_tuning.adapter_model(model, args.peft_targets, modules.ParallelBlockAdapter, 
+                                                                 bottleneck_ratio=args.bottleneck_ratio, weight_standardization=args.weight_standardization)
+            case 'sequential-conv-adapter':
+                trainable_parameters = fine_tuning.adapter_model(model, args.peft_targets, modules.SequentialConvAdapter, 
+                                                                 bottleneck_ratio=args.bottleneck_ratio, weight_standardization=args.weight_standardization)
+            case 'parallel-conv-adapter':
+                trainable_parameters = fine_tuning.adapter_model(model, args.peft_targets, modules.ParallelConvAdapter, 
                                                                  bottleneck_ratio=args.bottleneck_ratio, weight_standardization=args.weight_standardization)
 
         print(f"Number of trainable parameters using PEFT method {args.peft}: {trainable_parameters}")

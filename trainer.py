@@ -10,6 +10,7 @@ from opacus.grad_sample.functorch import make_functional
 # Train model
 def train(model, train_loader, test_loader, criterion, optimizer, weights_path, schedulers=[], epochs=200, checkpoint_every=10, state_dict={}, 
           loss_goal=0, differential_privacy=True, ma_model=None, max_physical_batch_size=128, augmentation_multiplicity=1, grad_sample_mode='no_op'):
+    model.to(static.CUDA)
     training_start_time = time.time()
     state_dict['epochs'] = []
     state_dict['checkpoints'] = []
