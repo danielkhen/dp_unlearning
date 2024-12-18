@@ -35,29 +35,29 @@ def main():
         modules.standardize_model(model)
 
     if args.peft:
-        trainable_parameters = 0
+        target_children = [getattr(model, name) for name in args.peft_targets]
 
         match args.peft:
             case 'lora':
-                model, trainable_parameters = fine_tuning.get_lora_model(model, target_children=args.peft_targets, rank=args.lora_rank, lora_alpha=args.lora_alpha, lora_dropout=args.lora_dropout)
+                model = fine_tuning.get_lora_model(model, target_children=target_children, rank=args.lora_rank, lora_alpha=args.lora_alpha, lora_dropout=args.lora_dropout)
             case 'prune':
-                trainable_parameters = fine_tuning.prune_model(model, args.peft_targets, args.prune_amount)
+                fine_tuning.prune_model(target_children, args.prune_amount)
             case 'prune-grads':
-                trainable_parameters = fine_tuning.prune_gradients(model, args.peft_targets, args.prune_amount)
+                fine_tuning.prune_gradients(target_children, args.prune_amount)
             case 'sequential-adapter':
-                trainable_parameters = fine_tuning.adapter_model(model, args.peft_targets, modules.SequentialBlockAdapter, 
-                                                                 bottleneck_ratio=args.bottleneck_ratio, weight_standardization=args.weight_standardization)
+                for child in target_children:
+                    fine_tuning.replace_blocks(child, modules.SequentialBlockAdapter, bottleneck_ratio=args.bottleneck_ratio, weight_standardization=args.weight_standardization)
             case 'parallel-adapter':
-                trainable_parameters = fine_tuning.adapter_model(model, args.peft_targets, modules.ParallelBlockAdapter, 
-                                                                 bottleneck_ratio=args.bottleneck_ratio, weight_standardization=args.weight_standardization)
+                for child in target_children:
+                    fine_tuning.replace_blocks(child, modules.ParallelBlockAdapter, bottleneck_ratio=args.bottleneck_ratio, weight_standardization=args.weight_standardization)
             case 'sequential-conv-adapter':
-                trainable_parameters = fine_tuning.adapter_model(model, args.peft_targets, modules.SequentialConvAdapter, 
-                                                                 bottleneck_ratio=args.bottleneck_ratio, weight_standardization=args.weight_standardization)
+                for child in target_children:
+                    fine_tuning.replace_modules(child, modules.SequentialConvAdapter, nn.Conv2d, bottleneck_ratio=args.bottleneck_ratio, weight_standardization=args.weight_standardization)
             case 'parallel-conv-adapter':
-                trainable_parameters = fine_tuning.adapter_model(model, args.peft_targets, modules.ParallelConvAdapter, 
-                                                                 bottleneck_ratio=args.bottleneck_ratio, weight_standardization=args.weight_standardization)
+                for child in target_children:
+                    fine_tuning.replace_modules(child, modules.ParallelConvAdapter, nn.Conv2d, bottleneck_ratio=args.bottleneck_ratio, weight_standardization=args.weight_standardization)
 
-        print(f"Number of trainable parameters using PEFT method {args.peft}: {trainable_parameters}")
+        print(f"Number of trainable parameters using PEFT method {args.peft}: {sum(param.numel() for param in model.parameters() if param.requires_grad)}")
 
     optimizer_class = getattr(optim, args.optimizer)
     optimizer = optimizer_class(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
