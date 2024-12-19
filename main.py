@@ -4,6 +4,7 @@ import static
 import trainer
 import fine_tuning
 import torch
+import torch_pruning as tp
 
 from torch import nn, optim
 from torchvision import transforms

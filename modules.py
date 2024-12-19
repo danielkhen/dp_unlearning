@@ -68,7 +68,7 @@ class ParallelConvAdapter(nn.Module):
         super(ParallelConvAdapter, self).__init__()
         self.conv = conv
         self.adapter = ConvAdapter(conv.in_channels, conv.out_channels, width=int(conv.in_channels // bottleneck_ratio), stride=conv.stride,
-                                   kernel_size=conv.kernel_size, padding=conv.padding, weight_standardization=weight_standardization)
+                                   kernel_size=conv.kernel_size, padding=conv.padding, stride=conv.stride, weight_standardization=weight_standardization)
     
     def forward(self, x):
         conv = self.conv(x)
@@ -81,7 +81,7 @@ class SequentialConvAdapter(nn.Module):
         super(SequentialConvAdapter, self).__init__()
         self.conv = conv
         self.adapter = ConvAdapter(conv.out_channels, conv.out_channels, width=int(conv.out_channels // bottleneck_ratio),
-                                   kernel_size=conv.kernel_size, padding=conv.padding, weight_standardization=weight_standardization)
+                                   kernel_size=conv.kernel_size, padding=conv.padding, stride=conv.stride, weight_standardization=weight_standardization)
     
     def forward(self, x):
         conv = self.conv(x)
