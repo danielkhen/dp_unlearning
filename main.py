@@ -47,16 +47,16 @@ def main():
                 fine_tuning.prune_gradients(target_children, args.prune_amount)
             case 'sequential-adapter':
                 for child in target_children:
-                    fine_tuning.replace_blocks(child, modules.SequentialBlockAdapter, bottleneck_ratio=args.bottleneck_ratio, weight_standardization=args.weight_standardization)
+                    fine_tuning.replace_blocks(child, modules.SequentialBlockAdapter, bottleneck_ratio=args.bottleneck_ratio)
             case 'parallel-adapter':
                 for child in target_children:
-                    fine_tuning.replace_blocks(child, modules.ParallelBlockAdapter, bottleneck_ratio=args.bottleneck_ratio, weight_standardization=args.weight_standardization)
+                    fine_tuning.replace_blocks(child, modules.ParallelBlockAdapter, bottleneck_ratio=args.bottleneck_ratio)
             case 'sequential-conv-adapter':
                 for child in target_children:
-                    fine_tuning.replace_modules(child, modules.SequentialConvAdapter, nn.Conv2d, bottleneck_ratio=args.bottleneck_ratio, weight_standardization=args.weight_standardization)
+                    fine_tuning.replace_modules(child, modules.SequentialConvAdapter, nn.Conv2d, bottleneck_ratio=args.bottleneck_ratio)
             case 'parallel-conv-adapter':
                 for child in target_children:
-                    fine_tuning.replace_modules(child, modules.ParallelConvAdapter, nn.Conv2d, bottleneck_ratio=args.bottleneck_ratio, weight_standardization=args.weight_standardization)
+                    fine_tuning.replace_modules(child, modules.ParallelConvAdapter, nn.Conv2d, bottleneck_ratio=args.bottleneck_ratio)
 
         print(f"Number of trainable parameters using PEFT method {args.peft}: {sum(param.numel() for param in model.parameters() if param.requires_grad)}")
 
