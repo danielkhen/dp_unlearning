@@ -68,7 +68,7 @@ def train(model, train_loader, test_loader, criterion, optimizer, weights_path, 
             })
 
             # Save model weights
-            torch.save(state_dict | {'': checkpoint_model.state_dict()}, weights_path + '.checkpoint') # Merge state dict so it doesn't sit on memory
+            torch.save(state_dict | {'model': checkpoint_model.state_dict()}, weights_path + '.checkpoint') # Merge state dict so it doesn't sit on memory
 
     # Output model statistics
     test_avg_loss, test_accuracy = tester.test(model, test_loader, criterion)

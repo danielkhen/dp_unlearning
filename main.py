@@ -24,8 +24,9 @@ def main():
     if args.input_weights:
         state_dict = torch.load(args.input_weights)
         model_state_dict = state_dict['model']
-
-        print(f"Loading pretrained model with Test loss: {state_dict['loss']}, Test accuracy: {state_dict['accuracy']:.2f}")
+        
+        if not args.input_weights.endswith('.checkpoint'):
+            print(f"Loading pretrained model with Test loss: {state_dict['loss']}, Test accuracy: {state_dict['accuracy']:.2f}")
 
     if args.test:
         return
