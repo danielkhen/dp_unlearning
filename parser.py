@@ -5,7 +5,6 @@ class ParseKwargs(argparse.Action):
         setattr(namespace, self.dest, dict())
         for value in values:
             key, value = value.split('=')
-            print(key, value, value.isnumeric(), float(value), type(float(value)))
 
             if value.isdigit():
                 value = int(value)
