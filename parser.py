@@ -33,7 +33,7 @@ parser.add_argument('--max-grad-norm', default=1.0, type=float, help='maximum gr
 parser.add_argument('--grad-sample-mode', default='hooks', type=str, help='opacus mode for computing per sample gradients, no-op uses functorch')
 
 parser.add_argument('--peft', default=None, type=str, help='the peft method to use, either lora, prune or prune-grads',
-                    choices=('lora', 'prune', 'prune-grads', 'sequential-adapter', 'parallel-adapter', 'sequential-conv-adapter', 'parallel-conv-adapter'))
+                    choices=('lora', 'prune', 'prune-grads', 'sequential-adapter', 'parallel-adapter', 'sequential-conv-adapter', 'parallel-conv-adapter', 'freeze'))
 parser.add_argument('--peft-targets', nargs='*', type=str, help='list of target model children to apply peft on')
 parser.add_argument('--prune-amount', default=0.8, type=float, help='amount to prune in percentage of targets weights')
 parser.add_argument('--lora-rank', default=32, type=int, help='rank for LoRA')

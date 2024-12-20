@@ -6,17 +6,14 @@ NORM_LAYERS = (nn.GroupNorm, nn.LayerNorm, nn.BatchNorm2d)
 
 class ConvAdapter(nn.Module):
     def __init__(self, inplanes, outplanes, width, 
-                kernel_size=3, padding=1, stride=1, dilation=1, act_layer=nn.ReLU, norm_layer=nn.Identity, weight_standardization=False, **kwargs):
+                kernel_size=3, padding=1, stride=1, dilation=1, act_layer=nn.ReLU, weight_standardization=False, **kwargs):
         super().__init__()
 
         # Depth-wise conv
         self.conv1 = nn.Conv2d(inplanes, width, kernel_size=kernel_size, stride=stride, groups=width, padding=padding, dilation=int(dilation), bias=False)
-        self.norm1 = norm_layer(width)
-        self.act1 = act_layer()
+        self.act = act_layer()
         # Point-wise conv
         self.conv2 = nn.Conv2d(width, outplanes, kernel_size=1, stride=1, bias=False)
-        self.norm2 = norm_layer(outplanes)
-        self.act2 = act_layer()
         self.se = nn.Parameter(1.0 * torch.zeros((1, outplanes, 1, 1)), requires_grad=True)
 
         if weight_standardization:
@@ -26,11 +23,8 @@ class ConvAdapter(nn.Module):
     
     def forward(self, x):
         out = self.conv1(x)
-        out = self.norm1(out)
-        out = self.act1(out)
+        out = self.act(out)
         out = self.conv2(out)
-        out = self.norm2(out)
-        out = self.act2(out)
         out = out * self.se
 
         return out

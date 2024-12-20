@@ -57,6 +57,11 @@ def main():
             case 'parallel-conv-adapter':
                 for child in target_children:
                     fine_tuning.replace_modules(child, modules.ParallelConvAdapter, nn.Conv2d, bottleneck_ratio=args.bottleneck_ratio)
+            case 'freeze':
+                for child in target_children:
+                    for module in child.modules():
+                        if isinstance(module, (nn.Conv2d, nn.Linear)):
+                            module.weight.requires_grad = False
 
         print(f"Number of trainable parameters using PEFT method {args.peft}: {sum(param.numel() for param in model.parameters() if param.requires_grad)}")
 
