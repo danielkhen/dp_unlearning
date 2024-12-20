@@ -12,6 +12,7 @@ parser.add_argument('--data-augmentation', '--da', action='store_true', help='da
 parser.add_argument('--pretrained', '-p', action='store_true', help='wether model comes with pre-trained weights')
 parser.add_argument('--epochs', '-e', default=200, type=int, help='number of epochs')
 parser.add_argument('--optimizer', '-o', default='SGD', type=str, help='optimizer to use from torch.nn.optim')
+parser.add_argument('--momentum', '-m', default=None, type=float, help='momentum to use in the optimizer')
 parser.add_argument('--input-weights', '-i', default=None, type=str, help='path of pth file for pre-trained weights')
 parser.add_argument('--loss-goal', default=0, type=float, help='average loss goal to stop training at')
 parser.add_argument('--augmentation-multiplicity', '--am', default=1, type=int, help='Use multiple augmentations per batch, does not increate batch size')
