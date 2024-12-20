@@ -17,8 +17,8 @@ DATASET_STD = (0.2023, 0.1994, 0.2010)
 
 AUGMENTATIONS = (
         transforms.AutoAugment(transforms.AutoAugmentPolicy.CIFAR10),
-        # transforms.RandomCrop(32, padding=4),
-        # transforms.RandomHorizontalFlip(),
+        transforms.RandomCrop(32, padding=4),
+        transforms.RandomHorizontalFlip(),
 )
 
 NORMALIZATIONS = (
