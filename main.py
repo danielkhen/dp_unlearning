@@ -66,7 +66,7 @@ def main():
         print(f"Number of trainable parameters using PEFT method {args.peft}: {sum(param.numel() for param in model.parameters() if param.requires_grad)}")
 
     optimizer_class = getattr(optim, args.optimizer)
-    optimizer = optimizer_class(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay, momentum=args.momentum)
+    optimizer = optimizer_class(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay, **args.optimizer_kwargs)
     criterion =  nn.CrossEntropyLoss()
     
     schedulers = []
