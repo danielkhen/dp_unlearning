@@ -27,7 +27,7 @@ parser.add_argument('--data-augmentation', '--da', action='store_true', help='da
 parser.add_argument('--pretrained', '-p', action='store_true', help='wether model comes with pre-trained weights')
 parser.add_argument('--epochs', '-e', default=200, type=int, help='number of epochs')
 parser.add_argument('--optimizer', '-o', default='SGD', type=str, help='optimizer to use from torch.nn.optim')
-parser.add_argument('--optimizer-kwargs', '-m', default=None, nargs='*', action=ParseKwargs, help='kwargs to use in optimizer')
+parser.add_argument('--optimizer-kwargs', '-m', default={}, nargs='*', action=ParseKwargs, help='kwargs to use in optimizer')
 parser.add_argument('--input-weights', '-i', default=None, type=str, help='path of pth file for pre-trained weights')
 parser.add_argument('--loss-goal', default=0, type=float, help='average loss goal to stop training at')
 parser.add_argument('--augmentation-multiplicity', '--am', default=1, type=int, help='Use multiple augmentations per batch, does not increate batch size')
@@ -48,6 +48,7 @@ parser.add_argument('--delta', default=1e-5, type=float, help='delta for differe
 parser.add_argument('--max-grad-norm', default=1.0, type=float, help='maximum gradient norm for differential privacy')
 parser.add_argument('--grad-sample-mode', default='hooks', type=str, help='opacus mode for computing per sample gradients, no-op uses functorch')
 parser.add_argument('--no-fix-dp', action='store_true', help='do not fix the model to allow differential privacy')
+parser.add_argument('--fix-dp-kwargs', default={}, nargs='*', action=ParseKwargs, help='kwargs to use in fixing the model for differential privacy')
 
 parser.add_argument('--peft', default=None, type=str, help='the peft method to use, either lora, prune or prune-grads',
                     choices=('lora', 'prune', 'prune-grads', 'sequential-adapter', 'parallel-adapter', 'sequential-conv-adapter', 'parallel-conv-adapter', 'freeze'))

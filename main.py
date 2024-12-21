@@ -30,7 +30,8 @@ def main():
     if args.test:
         return
 
-    model = loader.model_factory(args.model, state_dict=model_state_dict if args.input_weights else None, fix_dp=not args.no_fix_dp, pretrained=args.pretrained)
+    model = loader.model_factory(args.model, state_dict=model_state_dict if args.input_weights else None, fix_dp=not args.no_fix_dp, 
+                                 pretrained=args.pretrained, fix_dp_kwargs=args.fix_dp_kwargs)
 
     if args.weight_standardization:
         modules.standardize_model(model)
