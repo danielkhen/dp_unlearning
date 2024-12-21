@@ -47,6 +47,7 @@ parser.add_argument('--epsilon', default=8.0, type=float, help='epsilon for diff
 parser.add_argument('--delta', default=1e-5, type=float, help='delta for differential privacy')
 parser.add_argument('--max-grad-norm', default=1.0, type=float, help='maximum gradient norm for differential privacy')
 parser.add_argument('--grad-sample-mode', default='hooks', type=str, help='opacus mode for computing per sample gradients, no-op uses functorch')
+parser.add_argument('--no-fix-dp', action='store_true', help='do not fix the model to allow differential privacy')
 
 parser.add_argument('--peft', default=None, type=str, help='the peft method to use, either lora, prune or prune-grads',
                     choices=('lora', 'prune', 'prune-grads', 'sequential-adapter', 'parallel-adapter', 'sequential-conv-adapter', 'parallel-conv-adapter', 'freeze'))

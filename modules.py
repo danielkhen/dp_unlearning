@@ -34,7 +34,7 @@ class ParallelBlockAdapter(nn.Module):
         super(ParallelBlockAdapter, self).__init__()
         self.residual_block = block
         conv = block.conv1
-        self.adapter = ConvAdapter(conv.in_channels, conv.out_channels, width=int(conv.in_channels // bottleneck_ratio), norm_layer=lambda channels: nn.GroupNorm(16, channels),
+        self.adapter = ConvAdapter(conv.in_channels, conv.out_channels, width=int(conv.in_channels // bottleneck_ratio),
                                    kernel_size=conv.kernel_size, stride=conv.stride, padding=conv.padding, weight_standardization=weight_standardization)
     
     def forward(self, x):
@@ -48,7 +48,7 @@ class SequentialBlockAdapter(nn.Module):
         super(SequentialBlockAdapter, self).__init__()
         self.residual_block = block
         conv = block.conv2
-        self.adapter = ConvAdapter(conv.out_channels, conv.out_channels, width=int(conv.out_channels // bottleneck_ratio), norm_layer=lambda channels: nn.GroupNorm(16, channels),
+        self.adapter = ConvAdapter(conv.out_channels, conv.out_channels, width=int(conv.out_channels // bottleneck_ratio),
                                    kernel_size=conv.kernel_size, padding=conv.padding, weight_standardization=weight_standardization)
     
     def forward(self, x):
