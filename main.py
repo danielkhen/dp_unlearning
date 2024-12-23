@@ -40,9 +40,9 @@ def main():
         named_modules = dict(model.named_modules())
         target_children = [named_modules[name] for name in args.peft_targets]
         target_blocks = [f'{name}.{block_name}' for name in args.peft_targets 
-                         for block_name, _ in getattr(model, name).named_children()]
+                         for block_name, _ in named_modules[name].named_children()]
         target_modules = [f'{name}.{module_name}' for name in args.peft_targets 
-                          for module_name, module in getattr(model, name).named_children() 
+                          for module_name, module in named_modules[name].named_modules() 
                           if isinstance(module, nn.Conv2d)]
 
         match args.peft:
