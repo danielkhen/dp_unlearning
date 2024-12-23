@@ -51,7 +51,8 @@ parser.add_argument('--no-fix-dp', action='store_true', help='do not fix the mod
 parser.add_argument('--fix-dp-kwargs', default={}, nargs='*', action=ParseKwargs, help='kwargs to use in fixing the model for differential privacy')
 
 parser.add_argument('--peft', default=None, type=str, help='the peft method to use, either lora, prune or prune-grads',
-                    choices=('lora', 'prune', 'prune-grads', 'sequential-adapter', 'parallel-adapter', 'sequential-conv-adapter', 'parallel-conv-adapter', 'freeze'))
+                    choices=('lora', 'prune', 'prune-grads', 'sequential-adapter', 'parallel-adapter', 'sequential-conv-adapter', 
+                             'parallel-conv-adapter', 'freeze', 'butterfly'))
 parser.add_argument('--peft-targets', nargs='*', type=str, help='list of target model children to apply peft on')
 parser.add_argument('--prune-amount', default=0.8, type=float, help='amount to prune in percentage of targets weights')
 parser.add_argument('--lora-rank', default=32, type=int, help='rank for LoRA')

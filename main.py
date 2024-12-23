@@ -37,7 +37,13 @@ def main():
         modules.standardize_model(model)
 
     if args.peft:
-        target_children = [getattr(model, name) for name in args.peft_targets]
+        named_modules = dict(model.named_modules())
+        target_children = [named_modules[name] for name in args.peft_targets]
+        target_blocks = [f'{name}.{block_name}' for name in args.peft_targets 
+                         for block_name, _ in getattr(model, name).named_children()]
+        target_modules = [f'{name}.{module_name}' for name in args.peft_targets 
+                          for module_name, module in getattr(model, name).named_children() 
+                          if isinstance(module, nn.Conv2d)]
 
         match args.peft:
             case 'lora':
@@ -47,17 +53,54 @@ def main():
             case 'prune-grads':
                 fine_tuning.prune_gradients(target_children, args.prune_amount)
             case 'sequential-adapter':
-                for child in target_children:
-                    fine_tuning.replace_blocks(child, modules.SequentialBlockAdapter, bottleneck_ratio=args.bottleneck_ratio)
+                for block in target_blocks:
+                    fine_tuning.replace_module(model, block, modules.SequentialAdapter, args_lambda=lambda m: (m, modules.ConvAdapter),
+                                               kwargs_lambda=lambda m: {
+                                                    'inplanes': m.conv2.out_channels,
+                                                    'outplanes': m.conv2.out_channels,
+                                                    'width': m.conv2.out_channels // args.bottleneck_ratio,
+                                                })
             case 'parallel-adapter':
-                for child in target_children:
-                    fine_tuning.replace_blocks(child, modules.ParallelBlockAdapter, bottleneck_ratio=args.bottleneck_ratio)
+                for block in target_blocks:
+                    fine_tuning.replace_module(model, block, modules.ParallelAdapter, args_lambda=lambda m: (m, modules.ConvAdapter),
+                                               kwargs_lambda=lambda m: {
+                                                    'inplanes': m.conv1.in_channels,
+                                                    'outplanes': m.conv1.out_channels,
+                                                    'width': m.conv1.out_channels // args.bottleneck_ratio,
+                                                    'kernel_size': m.conv1.kernel_size,
+                                                    'stride': m.conv1.stride,
+                                                    'padding': m.conv1.padding
+                                                })
             case 'sequential-conv-adapter':
-                for child in target_children:
-                    fine_tuning.replace_modules(child, modules.SequentialConvAdapter, nn.Conv2d, bottleneck_ratio=args.bottleneck_ratio)
+                for module in target_modules:
+                    fine_tuning.replace_module(model, module, modules.SequentialAdapter, args_lambda=lambda m: (m, modules.ConvAdapter),
+                                               kwargs_lambda=lambda m: {
+                                                    'inplanes': m.out_channels,
+                                                    'outplanes': m.out_channels,
+                                                    'width': m.out_channels // args.bottleneck_ratio,
+                                                })
             case 'parallel-conv-adapter':
-                for child in target_children:
-                    fine_tuning.replace_modules(child, modules.ParallelConvAdapter, nn.Conv2d, bottleneck_ratio=args.bottleneck_ratio)
+                for module in target_modules:
+                    fine_tuning.replace_module(model, module, modules.ParallelAdapter, args_lambda=lambda m: (m, modules.ConvAdapter),
+                                               kwargs_lambda=lambda m: {
+                                                    'inplanes': m.in_channels,
+                                                    'outplanes': m.out_channels,
+                                                    'width': m.out_channels // args.bottleneck_ratio,
+                                                    'kernel_size': m.kernel_size,
+                                                    'stride': m.stride,
+                                                    'padding': m.padding
+                                                })
+            case 'butterfly':
+                for module in target_modules:
+                    fine_tuning.replace_module(model, module, modules.ParallelAdapter, args_lambda=lambda m: (m, modules.ButterflyConv2d),
+                                               kwargs_lambda=lambda m: {
+                                                    'in_channels': m.in_channels,
+                                                    'out_channels': m.out_channels,
+                                                    #'width': m.out_channels // args.bottleneck_ratio,
+                                                    'kernel_size': m.kernel_size,
+                                                    'stride': m.stride,
+                                                    'padding': m.padding
+                                                })
             case 'freeze':
                 for child in target_children:
                     for module in child.modules():
