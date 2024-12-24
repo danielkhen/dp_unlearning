@@ -27,7 +27,6 @@ class TestAdapter(nn.Module):
     def __init__(self, inplanes, outplanes, width, 
                 kernel_size=1, padding=1, stride=1, act_layer=nn.ReLU, weight_standardization=False, **kwargs):
         super().__init__()
-        print('TestAdapter', inplanes, outplanes, width, kernel_size, padding, stride, act_layer, weight_standardization, **kwargs)
 
         # Downsample
         self.conv1 = nn.Conv2d(inplanes, width, kernel_size=1, groups=width, bias=False)
