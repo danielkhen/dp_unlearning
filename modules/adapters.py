@@ -29,7 +29,7 @@ class TestAdapter(nn.Module):
         super().__init__()
 
         # Downsample
-        self.conv1 = nn.Conv2d(inplanes, width, kernel_size=1, stride=1, groups=width, bias=False)
+        self.conv1 = nn.Conv2d(inplanes, width, kernel_size=1, groups=width, bias=False)
         self.act = act_layer()
         # Regular conv
         self.conv2 = nn.Conv2d(width, outplanes, kernel_size=kernel_size, stride=stride, padding=padding, bias=False)

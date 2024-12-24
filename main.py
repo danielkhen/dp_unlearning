@@ -92,7 +92,7 @@ def main():
                                                 })
             case 'test-adapter':
                 for module in target_modules:
-                    fine_tuning.replace_module(model, module, modules.ParallelAdapter, args_lambda=lambda m: (m, modules.ConvAdapter),
+                    fine_tuning.replace_module(model, module, modules.ParallelAdapter, args_lambda=lambda m: (m, modules.TestAdapter),
                                                kwargs_lambda=lambda m: {
                                                     'inplanes': m.in_channels,
                                                     'outplanes': m.out_channels,
