@@ -22,12 +22,17 @@ class ButterflyPermutation(nn.Module):
     2. The index of the group in the batch of the permutation is the index in the group of the input.
     3. The index of the batch of the permutation is the index of the batch of the input.
     """
-    def __init__(self, width, group_size, multiplier):
+    def __init__(self, width, group_size, multiplier, kernel_size=1):
         super(ButterflyPermutation, self).__init__()
         batch_size = group_size * multiplier # Group of multiplier x groups
         self.permutation = []
 
-        for idx in range(width):
+        if isinstance(kernel_size, int):
+            kernel_size = (kernel_size, kernel_size)
+
+        kernel_mult = kernel_size[0] * kernel_size[1]
+
+        for idx in range(width * kernel_mult):
             idx_in_group = idx % group_size
             group_idx = (idx // group_size) % batch_size
             batch_idx = idx // batch_size
@@ -112,7 +117,7 @@ class ButterflyConv2d(nn.Module):
 
     def add_butterfly_permutation(self, width, group_size, multiplier):
         name = f'bfperm_w{width}_g{group_size}_m{multiplier}'
-        self.butterflies.add_module(name, ButterflyPermutation(width, group_size, multiplier))
+        self.butterflies.add_module(name, ButterflyPermutation(width, group_size, multiplier, self.kernel_size))
 
     def forward(self, x):
         if self.kernel_size != 1:
