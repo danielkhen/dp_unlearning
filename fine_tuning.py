@@ -72,7 +72,7 @@ def replace_modules(model, module_class, class_to_replace, **kwargs):
         else:
             replace_modules(block, module_class, class_to_replace, **kwargs)
 
-def replace_module(model, target, module_cls, args_lambda=lambda _: [], kwargs_lambda=lambda _: {}):
+def replace_module(model, target, module_cls, freeze=True, args_lambda=lambda _: [], kwargs_lambda=lambda _: {}):
     target_split = target.split('.')
     parent_module = model
 
@@ -83,3 +83,7 @@ def replace_module(model, target, module_cls, args_lambda=lambda _: [], kwargs_l
     module = getattr(parent_module, name)
     
     setattr(parent_module, target_split[-1], module_cls(*args_lambda(module), **kwargs_lambda(module)))
+
+    if freeze:
+        for param in module.parameters():
+            param.requires_grad = False
