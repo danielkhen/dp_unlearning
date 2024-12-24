@@ -78,5 +78,8 @@ def replace_module(model, target, module_cls, args_lambda=lambda _: [], kwargs_l
 
     for name in target_split[:-1]:
         parent_module = getattr(parent_module, name)
+
+    name = target_split[-1]
+    module = getattr(parent_module, name)
     
-    setattr(parent_module, target_split[-1], module_cls(*args_lambda(parent_module), **kwargs_lambda(parent_module)))
+    setattr(parent_module, target_split[-1], module_cls(*args_lambda(module), **kwargs_lambda(module)))
