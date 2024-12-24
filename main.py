@@ -58,7 +58,7 @@ def main():
                                                kwargs_lambda=lambda m: {
                                                     'inplanes': m.conv2.out_channels,
                                                     'outplanes': m.conv2.out_channels,
-                                                    'width': m.conv2.out_channels // args.bottleneck_ratio,
+                                                    'width': int(m.conv2.out_channels // args.bottleneck_ratio),
                                                 })
             case 'parallel-adapter':
                 for block in target_blocks:
@@ -66,7 +66,7 @@ def main():
                                                kwargs_lambda=lambda m: {
                                                     'inplanes': m.conv1.in_channels,
                                                     'outplanes': m.conv1.out_channels,
-                                                    'width': m.conv1.out_channels // args.bottleneck_ratio,
+                                                    'width': int(m.conv1.out_channels // args.bottleneck_ratio),
                                                     'kernel_size': m.conv1.kernel_size,
                                                     'stride': m.conv1.stride,
                                                     'padding': m.conv1.padding
@@ -77,7 +77,7 @@ def main():
                                                kwargs_lambda=lambda m: {
                                                     'inplanes': m.out_channels,
                                                     'outplanes': m.out_channels,
-                                                    'width': m.out_channels // args.bottleneck_ratio,
+                                                    'width': int(m.out_channels // args.bottleneck_ratio),
                                                 })
             case 'parallel-conv-adapter':
                 for module in target_modules:
@@ -85,7 +85,7 @@ def main():
                                                kwargs_lambda=lambda m: {
                                                     'inplanes': m.in_channels,
                                                     'outplanes': m.out_channels,
-                                                    'width': m.out_channels // args.bottleneck_ratio,
+                                                    'width': int(m.out_channels // args.bottleneck_ratio),
                                                     'kernel_size': m.kernel_size,
                                                     'stride': m.stride,
                                                     'padding': m.padding
@@ -96,7 +96,7 @@ def main():
                                                kwargs_lambda=lambda m: {
                                                     'inplanes': m.in_channels,
                                                     'outplanes': m.out_channels,
-                                                    'width': m.out_channels // args.bottleneck_ratio,
+                                                    'width': int(m.out_channels // args.bottleneck_ratio),
                                                     'kernel_size': m.kernel_size,
                                                     'stride': m.stride,
                                                     'padding': m.padding,
