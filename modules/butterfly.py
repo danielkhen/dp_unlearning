@@ -34,9 +34,10 @@ class ButterflyPermutation(nn.Module):
 
         for idx in range(width * kernel_mult):
             idx_in_group = idx % group_size
-            group_idx = (idx // group_size) % batch_size
-            batch_idx = idx // batch_size
-            self.permutation.append(group_idx + multiplier * idx_in_group + batch_size * batch_idx)
+            group_idx = (idx % batch_size) // group_size
+            batch_idx = (idx % width) // batch_size
+            kernel_idx = idx // width
+            self.permutation.append(group_idx + multiplier * idx_in_group + batch_size * batch_idx + kernel_idx * width)
     
     def forward(self, x):
         return x[:, self.permutation, :, :]
