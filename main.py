@@ -90,6 +90,18 @@ def main():
                                                     'stride': m.stride,
                                                     'padding': m.padding
                                                 })
+            case 'test-adapter':
+                for module in target_modules:
+                    fine_tuning.replace_module(model, module, modules.ParallelAdapter, args_lambda=lambda m: (m, modules.ConvAdapter),
+                                               kwargs_lambda=lambda m: {
+                                                    'inplanes': m.in_channels,
+                                                    'outplanes': m.out_channels,
+                                                    'width': m.out_channels // args.bottleneck_ratio,
+                                                    'kernel_size': m.kernel_size,
+                                                    'stride': m.stride,
+                                                    'padding': m.padding,
+                                                    'weight_standardization': args.weight_standardization
+                                                })
             case 'butterfly':
                 for module in target_modules:
                     fine_tuning.replace_module(model, module, modules.ParallelAdapter, args_lambda=lambda m: (m, modules.ButterflyConv2d),
