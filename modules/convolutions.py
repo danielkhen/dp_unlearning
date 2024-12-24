@@ -29,8 +29,8 @@ class KernelExpand(nn.Module):
         padded = F.pad(x, self.padding)
         transforms = []
         
-        for kernel_height in self.kernel_size[0]:
-            for kernel_width in self.kernel_size[1]:
+        for kernel_height in range(self.kernel_size[0]):
+            for kernel_width in range(self.kernel_size[1]):
                 transforms.append(padded[:, :, kernel_height:kernel_height + height:self.stride[0], kernel_width:kernel_width + width:self.stride[1]])
 
         return torch.cat(transforms, dim=1)
