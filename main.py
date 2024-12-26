@@ -155,6 +155,8 @@ def main():
             'input_weights': args.input_weights
         } if args.input_weights else None
     }
+    import tester
+    print(tester.test(model, test_loader, criterion))
 
     trainer.train(model, train_loader, test_loader, criterion, optimizer, args.output, schedulers=schedulers, epochs=args.epochs, 
                 checkpoint_every=args.checkpoint_every, state_dict=starting_state_dict, differential_privacy=args.differential_privacy, 
