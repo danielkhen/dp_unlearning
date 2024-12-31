@@ -92,16 +92,17 @@ def main():
                                                 })
             case 'test-adapter':
                 for module in target_modules:
-                    fine_tuning.replace_module(model, module, modules.ParallelAdapter, args_lambda=lambda m: (m, modules.TestAdapter),
-                                               kwargs_lambda=lambda m: {
-                                                    'inplanes': m.in_channels,
-                                                    'outplanes': m.out_channels,
-                                                    'width': int(m.out_channels // args.bottleneck_ratio),
-                                                    'kernel_size': m.kernel_size,
-                                                    'stride': m.stride,
-                                                    'padding': m.padding,
-                                                    'weight_standardization': args.weight_standardization
-                                                })
+                    if module.kernel_size != 1 and module.kernel_size != (1, 1):
+                        fine_tuning.replace_module(model, module, modules.ParallelAdapter, args_lambda=lambda m: (m, modules.TestAdapter),
+                                                kwargs_lambda=lambda m: {
+                                                        'inplanes': m.in_channels,
+                                                        'outplanes': m.out_channels,
+                                                        'width': int(m.out_channels // args.bottleneck_ratio),
+                                                        'kernel_size': m.kernel_size,
+                                                        'stride': m.stride,
+                                                        'padding': m.padding,
+                                                        'weight_standardization': args.weight_standardization
+                                                    })
             case 'butterfly':
                 for module in target_modules:
                     fine_tuning.replace_module(model, module, modules.ParallelAdapter, args_lambda=lambda m: (m, modules.ButterflyConv2d),
