@@ -30,12 +30,12 @@ class TestAdapter(nn.Module):
         super().__init__()
 
         # Downsample
-        self.conv1 = nn.Conv2d(inplanes, outplanes, kernel_size=kernel_size, stride=stride, padding=padding, groups=bottleneck_ratio, bias=False)
+        width = int(outplanes//bottleneck_ratio)
+        self.conv1 = nn.Conv2d(inplanes, width, kernel_size=kernel_size, stride=stride, padding=padding, bias=False)
         self.act = act_layer()
         # Regular conv
-        width = int(outplanes//bottleneck_ratio)
-        self.perm = ButterflyPermutation(outplanes, width, bottleneck_ratio)
-        self.conv2 = nn.Conv2d(outplanes, outplanes, kernel_size=1, groups=width, bias=False)
+        #self.perm = ButterflyPermutation(outplanes, width, bottleneck_ratio)
+        self.conv2 = nn.Conv2d(width, outplanes, kernel_size=1, bias=False)
         self.se = nn.Parameter(torch.zeros((1, outplanes, 1, 1)), requires_grad=True)
 
         if weight_standardization:

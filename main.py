@@ -99,7 +99,7 @@ def main():
                                                 kwargs_lambda=lambda m: {
                                                     'inplanes': m.in_channels,
                                                     'outplanes': m.out_channels,
-                                                    'width': int(m.out_channels // args.bottleneck_ratio),
+                                                    'bottleneck_ratio': args.bottleneck_ratio,
                                                     'kernel_size': m.kernel_size,
                                                     'stride': m.stride,
                                                     'padding': m.padding,
