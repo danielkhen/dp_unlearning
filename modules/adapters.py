@@ -2,6 +2,7 @@ import torch
 
 from modules.normalization import Conv2dWS
 from torch import nn
+from modules.butterfly import ButterflyPermutation
 
 class ConvAdapter(nn.Module):
     def __init__(self, inplanes, outplanes, width, 
@@ -24,15 +25,17 @@ class ConvAdapter(nn.Module):
         return out
     
 class TestAdapter(nn.Module):
-    def __init__(self, inplanes, outplanes, width, 
+    def __init__(self, inplanes, outplanes, bottleneck_ratio, 
                 kernel_size=1, padding=1, stride=1, act_layer=nn.ReLU, weight_standardization=False, **kwargs):
         super().__init__()
 
         # Downsample
-        self.conv1 = nn.Conv2d(inplanes, outplanes, kernel_size=kernel_size, stride=stride, padding=padding, groups=int(outplanes//width), bias=False)
+        self.conv1 = nn.Conv2d(inplanes, outplanes, kernel_size=kernel_size, stride=stride, padding=padding, groups=bottleneck_ratio, bias=False)
         self.act = act_layer()
         # Regular conv
-        self.conv2 = nn.Conv2d(outplanes, outplanes, kernel_size=1, bias=False)
+        width = int(outplanes//bottleneck_ratio)
+        self.perm = ButterflyPermutation(outplanes, width, bottleneck_ratio)
+        self.conv2 = nn.Conv2d(outplanes, outplanes, kernel_size=1, groups=width, bias=False)
         self.se = nn.Parameter(torch.zeros((1, outplanes, 1, 1)), requires_grad=True)
 
         if weight_standardization:
