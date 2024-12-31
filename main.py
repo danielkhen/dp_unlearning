@@ -37,16 +37,16 @@ def main():
         modules.standardize_model(model)
 
     if args.peft:
+        if isinstance(args.bottleneck_ratio, int):
+            args.bottleneck_ratio = [args.bottleneck_ratio] * len(args.peft_targets)
+                                                                  
         named_modules = dict(model.named_modules())
         target_children = [named_modules[name] for name in args.peft_targets]
         target_blocks = [f'{name}.{block_name}' for name in args.peft_targets 
                          for block_name, _ in named_modules[name].named_children()]
-        target_modules = [f'{name}.{module_name}' for name in args.peft_targets 
-                          for module_name, module in named_modules[name].named_modules() 
-                          if isinstance(module, nn.Conv2d)]
-        kernel_target_modules = [f'{name}.{module_name}' for name in args.peft_targets 
-                          for module_name, module in named_modules[name].named_modules() 
-                          if isinstance(module, nn.Conv2d) and module.kernel_size != 1 and module.kernel_size != (1, 1)]
+        target_modules = {f'{name}.{module_name}': bottleneck_ratio for name, bottleneck_ratio in zip(args.peft_targets, args.bottleneck_ratio)
+                          for module_name, module in named_modules[name].named_modules()
+                          if isinstance(module, nn.Conv2d)}
 
         match args.peft:
             case 'lora':
@@ -94,12 +94,12 @@ def main():
                                                     'padding': m.padding
                                                 })
             case 'test-adapter':
-                for module in kernel_target_modules:
+                for module, bottleneck_ratio in target_modules.items():
                     fine_tuning.replace_module(model, module, modules.ParallelAdapter, args_lambda=lambda m: (m, modules.TestAdapter),
                                                 kwargs_lambda=lambda m: {
                                                     'inplanes': m.in_channels,
                                                     'outplanes': m.out_channels,
-                                                    'bottleneck_ratio': args.bottleneck_ratio,
+                                                    'bottleneck_ratio': bottleneck_ratio,
                                                     'kernel_size': m.kernel_size,
                                                     'stride': m.stride,
                                                     'padding': m.padding,

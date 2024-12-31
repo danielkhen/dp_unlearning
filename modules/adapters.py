@@ -34,7 +34,6 @@ class TestAdapter(nn.Module):
         self.conv1 = nn.Conv2d(inplanes, width, kernel_size=kernel_size, stride=stride, padding=padding, bias=False)
         self.act = act_layer()
         # Regular conv
-        #self.perm = ButterflyPermutation(outplanes, width, bottleneck_ratio)
         self.conv2 = nn.Conv2d(width, outplanes, kernel_size=1, bias=False)
         self.se = nn.Parameter(torch.zeros((1, outplanes, 1, 1)), requires_grad=True)
 

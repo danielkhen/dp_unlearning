@@ -58,4 +58,4 @@ parser.add_argument('--prune-amount', default=0.8, type=float, help='amount to p
 parser.add_argument('--lora-rank', default=32, type=int, help='rank for LoRA')
 parser.add_argument('--lora-alpha', default=32, type=int, help='alpha for LoRA')
 parser.add_argument('--lora-dropout', default=1e-1, type=float, help='dropout for LoRA')
-parser.add_argument('--bottleneck_ratio', default=4, type=int, help='The ratio to decrease the features width in adapter peft')
+parser.add_argument('--bottleneck_ratio', default=4, nargs='*', type=int, help='The ratio to decrease the features width in adapter peft')
