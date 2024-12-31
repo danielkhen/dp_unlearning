@@ -1,3 +1,5 @@
+import static
+
 from torch import nn
 
 NORM_LAYERS = (nn.GroupNorm, nn.LayerNorm, nn.BatchNorm2d)

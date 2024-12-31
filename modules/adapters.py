@@ -30,6 +30,7 @@ class TestAdapter(nn.Module):
 
         # Downsample
         self.conv1 = nn.Conv2d(inplanes, width, kernel_size=kernel_size, stride=stride, padding=padding, bias=False)
+        self.norm = nn.GroupNorm(16, width)
         self.act = act_layer()
         # Regular conv
         self.conv2 = nn.Conv2d(width, outplanes, kernel_size=1, bias=False)
@@ -41,6 +42,7 @@ class TestAdapter(nn.Module):
 
     def forward(self, x):
         out = self.conv1(x)
+        out = self.norm(out)
         out = self.act(out)
         out = self.conv2(out)
         out = out * self.se
