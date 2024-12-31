@@ -37,8 +37,8 @@ def main():
         modules.standardize_model(model)
 
     if args.peft:
-        if isinstance(args.bottleneck_ratio, int):
-            args.bottleneck_ratio = [args.bottleneck_ratio] * len(args.peft_targets)
+        if len(args.bottleneck_ratio):
+            args.bottleneck_ratio = args.bottleneck_ratio * len(args.peft_targets)
                                                                   
         named_modules = dict(model.named_modules())
         target_children = [named_modules[name] for name in args.peft_targets]

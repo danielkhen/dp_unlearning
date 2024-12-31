@@ -29,22 +29,32 @@ class TestAdapter(nn.Module):
                 kernel_size=1, padding=1, stride=1, act_layer=nn.ReLU, weight_standardization=False, **kwargs):
         super().__init__()
 
+        self.bottleneck_ratio = bottleneck_ratio
+
         # Downsample
         width = int(outplanes//bottleneck_ratio)
         self.conv1 = nn.Conv2d(inplanes, width, kernel_size=kernel_size, stride=stride, padding=padding, bias=False)
-        self.act = act_layer()
-        # Regular conv
-        self.conv2 = nn.Conv2d(width, outplanes, kernel_size=1, bias=False)
+
+        if bottleneck_ratio != 1:
+            self.act = act_layer()
+            # Regular conv
+            self.conv2 = nn.Conv2d(width, outplanes, kernel_size=1, bias=False)
+
         self.se = nn.Parameter(torch.zeros((1, outplanes, 1, 1)), requires_grad=True)
 
         if weight_standardization:
             self.conv1 = Conv2dWS(self.conv1)
-            self.conv2 = Conv2dWS(self.conv2)
+
+            if bottleneck_ratio != 1:
+                self.conv2 = Conv2dWS(self.conv2)
 
     def forward(self, x):
         out = self.conv1(x)
-        out = self.act(out)
-        out = self.conv2(out)
+
+        if self.bottleneck_ratio != 1:
+            out = self.act(out)
+            out = self.conv2(out)
+
         out = out * self.se
 
         return out
