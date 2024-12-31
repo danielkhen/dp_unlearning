@@ -100,7 +100,7 @@ def main():
                                                     'kernel_size': m.kernel_size,
                                                     'stride': m.stride,
                                                     'padding': m.padding,
-                                                    'weight_standardization': args.weight_standardization
+                                                    #'weight_standardization': args.weight_standardization
                                                 })
             case 'butterfly':
                 for module in target_modules:
