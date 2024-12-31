@@ -36,7 +36,7 @@ class TestAdapter(nn.Module):
         self.se = nn.Parameter(torch.zeros((1, outplanes, 1, 1)), requires_grad=True)
 
         if weight_standardization:
-            self.conv1 = Conv2dWS(self.conv1)
+            #self.conv1 = Conv2dWS(self.conv1)
             self.conv2 = Conv2dWS(self.conv2)
 
     def forward(self, x):
