@@ -29,8 +29,7 @@ class Conv2dWS(nn.Conv2d):
         std = weight.std(dim=(1, 2, 3), keepdim=True)
         weight = (weight - weight_mean) / std
 
-        return nn.functional.conv2d(x, weight, self.bias, self.stride,
-                                self.padding, self.groups)
+        return nn.functional.conv2d(x, weight, self.bias, self.stride, self.padding, self.dilation, self.groups)
 
 # Implementation with parameterization didn't work with grad_sample_mode=hooks and didn't have performance benefits
 def standardize_model(model):
