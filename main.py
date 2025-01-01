@@ -37,69 +37,31 @@ def main():
         modules.standardize_model(model)
 
     if args.peft:
-        if len(args.bottleneck_ratio):
-            args.bottleneck_ratio = args.bottleneck_ratio * len(args.peft_targets)
-                                                                  
+        if args.peft_ratio:
+            args.peft_ratio = args.peft_ratio * len(args.peft_targets)
+
         named_modules = dict(model.named_modules())
+        peft_modules = tuple(getattr(nn, module) for module in args.peft_modules)                                   
         target_children = [named_modules[name] for name in args.peft_targets]
-        target_blocks = [f'{name}.{block_name}' for name in args.peft_targets 
-                         for block_name, _ in named_modules[name].named_children()]
-        target_modules = {f'{name}.{module_name}': bottleneck_ratio for name, bottleneck_ratio in zip(args.peft_targets, args.bottleneck_ratio)
+        target_modules = {(f'{name}.{module_name}' if module_name else name): peft_ratio for name, peft_ratio in zip(args.peft_targets, args.peft_ratio)
                           for module_name, module in named_modules[name].named_modules()
-                          if isinstance(module, nn.Conv2d)}
+                          if not peft_modules or isinstance(module, peft_modules)}
 
         match args.peft:
             case 'lora':
                 model = fine_tuning.get_lora_model(model, target_children=target_children, rank=args.lora_rank, lora_alpha=args.lora_alpha, lora_dropout=args.lora_dropout)
             case 'prune':
-                fine_tuning.prune_model(target_children, args.prune_amount)
-            case 'prune-grads':
-                fine_tuning.prune_gradients(target_children, args.prune_amount)
-            case 'sequential-adapter':
-                for block in target_blocks:
-                    fine_tuning.replace_module(model, block, modules.SequentialAdapter, args_lambda=lambda m: (m, modules.ConvAdapter),
-                                               kwargs_lambda=lambda m: {
-                                                    'inplanes': m.conv2.out_channels,
-                                                    'outplanes': m.conv2.out_channels,
-                                                    'width': int(m.conv2.out_channels // args.bottleneck_ratio),
-                                                })
-            case 'parallel-adapter':
-                for block in target_blocks:
-                    fine_tuning.replace_module(model, block, modules.ParallelAdapter, args_lambda=lambda m: (m, modules.ConvAdapter),
-                                               kwargs_lambda=lambda m: {
-                                                    'inplanes': m.conv1.in_channels,
-                                                    'outplanes': m.conv1.out_channels,
-                                                    'width': int(m.conv1.out_channels // args.bottleneck_ratio),
-                                                    'kernel_size': m.conv1.kernel_size,
-                                                    'stride': m.conv1.stride,
-                                                    'padding': m.conv1.padding
-                                                })
-            case 'sequential-conv-adapter':
-                for module in target_modules:
-                    fine_tuning.replace_module(model, module, modules.SequentialAdapter, args_lambda=lambda m: (m, modules.ConvAdapter),
-                                               kwargs_lambda=lambda m: {
-                                                    'inplanes': m.out_channels,
-                                                    'outplanes': m.out_channels,
-                                                    'width': int(m.out_channels // args.bottleneck_ratio),
-                                                })
-            case 'parallel-conv-adapter':
-                for module in target_modules:
+                ignored_modules = [module for name, module in named_modules.items() 
+                                   if name and not any(name.startswith(target) for target in args.peft_targets)]
+                pruning_ratio_dict = {named_modules[name]: (1 - 1/pruning_ratio) for name, pruning_ratio in target_modules.items()}
+                fine_tuning.prune(model, ignored_layers=ignored_modules, importance=args.pruning_importance, pruning_ratio_dict=pruning_ratio_dict)
+            case 'conv-adapter':
+                for module, peft_ratio in target_modules.items():
                     fine_tuning.replace_module(model, module, modules.ParallelAdapter, args_lambda=lambda m: (m, modules.ConvAdapter),
-                                               kwargs_lambda=lambda m: {
-                                                    'inplanes': m.in_channels,
-                                                    'outplanes': m.out_channels,
-                                                    'width': int(m.out_channels // args.bottleneck_ratio),
-                                                    'kernel_size': m.kernel_size,
-                                                    'stride': m.stride,
-                                                    'padding': m.padding
-                                                })
-            case 'test-adapter':
-                for module, bottleneck_ratio in target_modules.items():
-                    fine_tuning.replace_module(model, module, modules.ParallelAdapter, args_lambda=lambda m: (m, modules.TestAdapter),
                                                 kwargs_lambda=lambda m: {
                                                     'inplanes': m.in_channels,
                                                     'outplanes': m.out_channels,
-                                                    'bottleneck_ratio': bottleneck_ratio,
+                                                    'peft_ratio': peft_ratio,
                                                     'kernel_size': m.kernel_size,
                                                     'stride': m.stride,
                                                     'padding': m.padding,

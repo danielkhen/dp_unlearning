@@ -1,5 +1,6 @@
 import static
 import torch
+import torch_pruning as tp
 
 from peft import get_peft_model, LoraConfig
 from torch.nn.utils import prune
@@ -28,30 +29,44 @@ def get_lora_model(model, target_children, rank, lora_alpha, lora_dropout):
 
     return model
 
-def get_pruning_mask(param, amount):
-    with torch.no_grad():
-        flattened_weights = param.abs().view(-1)
-        threshold_index = int(len(flattened_weights) * amount)
-        threshold_value = torch.sort(flattened_weights)[0][threshold_index]
+# def get_pruning_mask(param, amount):
+#     with torch.no_grad():
+#         flattened_weights = param.abs().view(-1)
+#         threshold_index = int(len(flattened_weights) * amount)
+#         threshold_value = torch.sort(flattened_weights)[0][threshold_index]
 
-        return (param.abs() >= threshold_value)
+#         return (param.abs() >= threshold_value)
 
-def prune_gradients(target_children, amount):
-    target_parameters = [module.weight for child in target_children 
-                        for module in child.modules() 
-                        if isinstance(module, PEFT_SUPPORTED_TYPES)]
+# def prune_gradients(target_children, amount):
+#     target_parameters = [module.weight for child in target_children 
+#                         for module in child.modules() 
+#                         if isinstance(module, PEFT_SUPPORTED_TYPES)]
     
-    for param in target_parameters:
-        mask = get_pruning_mask(param, amount=amount).to(static.CUDA)
-        param.register_hook(lambda grad, mask=mask: grad * mask) # Ensure mask scope is in lambda function
+#     for param in target_parameters:
+#         mask = get_pruning_mask(param, amount=amount).to(static.CUDA)
+#         param.register_hook(lambda grad, mask=mask: grad * mask) # Ensure mask scope is in lambda function
 
-def prune_model(target_children, amount):
-    target_modules = [module for child in target_children 
-                        for module in child.modules() 
-                        if isinstance(module, PEFT_SUPPORTED_TYPES)]
+# def prune_model(target_children, amount):
+#     target_modules = [module for child in target_children 
+#                         for module in child.modules() 
+#                         if isinstance(module, PEFT_SUPPORTED_TYPES)]
     
-    for module in target_modules:
-        prune.l1_unstructured(module, 'weight', amount=amount)
+#     for module in target_modules:
+#         prune.l1_unstructured(module, 'weight', amount=amount)
+
+def prune(model, ignored_layers, importance, pruning_ratio_dict, importance_kwargs={}):
+    importance = getattr(tp.importance, importance)
+
+    pruner = tp.pruner.MetaPruner(
+        model,
+        torch.randn(1, 3, static.IMG_SIZE, static.IMG_SIZE),
+        importance=importance(**importance_kwargs),
+        pruning_ratio_dict=pruning_ratio_dict,
+        ignored_layers=ignored_layers
+    )
+
+    pruner.step()
+
 
 # Replaces blocks directly under model
 def replace_blocks(model, block_class, **kwargs):

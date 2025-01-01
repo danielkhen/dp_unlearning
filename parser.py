@@ -52,10 +52,11 @@ parser.add_argument('--fix-dp-kwargs', default={}, nargs='*', action=ParseKwargs
 
 parser.add_argument('--peft', default=None, type=str, help='the peft method to use, either lora, prune or prune-grads',
                     choices=('lora', 'prune', 'prune-grads', 'sequential-adapter', 'parallel-adapter', 'sequential-conv-adapter', 
-                             'parallel-conv-adapter', 'freeze', 'butterfly', 'test-adapter'))
-parser.add_argument('--peft-targets', nargs='*', type=str, help='list of target model children to apply peft on')
-parser.add_argument('--prune-amount', default=0.8, type=float, help='amount to prune in percentage of targets weights')
+                             'parallel-conv-adapter', 'freeze', 'butterfly'))
+parser.add_argument('--peft-targets', nargs='*', type=str, help='list of target modules to apply peft on')
 parser.add_argument('--lora-rank', default=32, type=int, help='rank for LoRA')
 parser.add_argument('--lora-alpha', default=32, type=int, help='alpha for LoRA')
 parser.add_argument('--lora-dropout', default=1e-1, type=float, help='dropout for LoRA')
-parser.add_argument('--bottleneck_ratio', default=4, nargs='*', type=int, help='The ratio to decrease the features width in adapter peft')
+parser.add_argument('--peft-ratio', default=[4], nargs='*', type=int, help='The ratio to decrease the features width in adapter peft')
+parser.add_argument('--peft-modules', default=['Conv2d', 'Linear'], nargs='*', type=str, help='modules from torch.nn to apply peft on')
+parser.add_argument('--pruning-importance', default='GroupNormImportance', type=str, help='importance function to use in pruning')
