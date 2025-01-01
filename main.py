@@ -53,7 +53,7 @@ def main():
             case 'prune':
                 ignored_modules = [module for name, module in named_modules.items() 
                                    if name and not any(name.startswith(target) for target in args.peft_targets)]
-                pruning_ratio_dict = {named_modules[name]: (1 - 1/pruning_ratio) for name, pruning_ratio in target_modules.items()}
+                pruning_ratio_dict = {named_modules[name]: pruning_ratio for name, pruning_ratio in target_modules.items()}
                 fine_tuning.prune(model, ignored_layers=ignored_modules, importance=args.pruning_importance, pruning_ratio_dict=pruning_ratio_dict)
             case 'conv-adapter':
                 for module, peft_ratio in target_modules.items():

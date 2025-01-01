@@ -1,5 +1,6 @@
 import static
 import torch
+import math
 import torch_pruning as tp
 
 from peft import get_peft_model, LoraConfig
@@ -55,6 +56,7 @@ def get_lora_model(model, target_children, rank, lora_alpha, lora_dropout):
 #         prune.l1_unstructured(module, 'weight', amount=amount)
 
 def prune(model, ignored_layers, importance, pruning_ratio_dict, importance_kwargs={}):
+    pruning_ratio_dict = {module: 1 - 1/math.sqrt(ratio) for module, ratio in pruning_ratio_dict.items()}
     importance = getattr(tp.importance, importance)
 
     pruner = tp.pruner.MetaPruner(
