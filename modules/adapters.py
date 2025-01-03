@@ -51,7 +51,7 @@ class ConvAdapter(nn.Module):
     
 class SequentialAdapter(nn.Module):
     def __init__(self, module, module_cls, *args, **kwargs):
-        super(ParallelAdapter, self).__init__()
+        super(SequentialAdapter, self).__init__()
         self.original_module = module
         self.sequential_module = module_cls(*args, **kwargs)
 
