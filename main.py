@@ -68,9 +68,9 @@ def main():
                     
             case 'linear-adapter':
                 for name, _, peft_ratio in target_modules:
-                    fine_tuning.replace_module(model, name, modules.ParallelAdapter, args_lambda=lambda m: (m, modules.LinearAdapter),
+                    fine_tuning.replace_module(model, name, modules.SequentialAdapter, args_lambda=lambda m: (m, modules.LinearAdapter),
                                                 kwargs_lambda=lambda m: {
-                                                    'inplanes': m.in_features,
+                                                    'inplanes': m.out_features,
                                                     'outplanes': m.out_features,
                                                     'bias': m.bias is not None,
                                                     'peft_ratio': peft_ratio,

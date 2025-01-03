@@ -22,7 +22,7 @@ class LinearAdapter(nn.Module):
         out = self.fc2(out)
         out = out * self.se
 
-        return out + x
+        return out
     
 class ConvAdapter(nn.Module):
     def __init__(self, inplanes, outplanes, peft_ratio, 
