@@ -13,7 +13,7 @@ class LinearAdapter(nn.Module):
         self.fc1 = nn.Linear(inplanes, width, bias=bias)
         self.act = act_layer()
         # Regular conv
-        self.fc2 = nn.Conv2d(width, outplanes, bias=bias)
+        self.fc2 = nn.Linear(width, outplanes, bias=bias)
         self.se = nn.Parameter(torch.ones((outplanes)), requires_grad=True) 
 
     def forward(self, x):
