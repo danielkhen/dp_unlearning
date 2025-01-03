@@ -72,7 +72,7 @@ def main():
                                                 kwargs_lambda=lambda m: {
                                                     'inplanes': m.in_features,
                                                     'outplanes': m.out_features,
-                                                    'bias': m.bias,
+                                                    'bias': m.bias is not None,
                                                     'peft_ratio': peft_ratio,
                                                 })
             case 'freeze':
