@@ -2,7 +2,27 @@ import torch
 
 from modules.normalization import Conv2dWS
 from torch import nn
-from modules.butterfly import ButterflyPermutation
+
+class LinearAdapter(nn.Module):
+    def __init__(self, inplanes, outplanes, peft_ratio, bias=True,
+                act_layer=nn.ReLU, **kwargs):
+        super().__init__()
+
+        # Downsample
+        width = int(min(inplanes, outplanes)//peft_ratio)
+        self.fc1 = nn.Linear(inplanes, width, bias=bias)
+        self.act = act_layer()
+        # Regular conv
+        self.fc2 = nn.Conv2d(width, outplanes, bias=bias)
+        self.se = nn.Parameter(torch.ones((outplanes)), requires_grad=True) 
+
+    def forward(self, x):
+        out = self.fc1(x)
+        out = self.act(out)
+        out = self.fc2(out)
+        out = out * self.se
+
+        return out
     
 class ConvAdapter(nn.Module):
     def __init__(self, inplanes, outplanes, peft_ratio, 

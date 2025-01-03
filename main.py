@@ -65,6 +65,16 @@ def main():
                                                     'padding': m.padding,
                                                     'weight_standardization': args.weight_standardization
                                                 })
+                    
+            case 'linear-adapter':
+                for name, _, peft_ratio in target_modules:
+                    fine_tuning.replace_module(model, name, modules.ParallelAdapter, args_lambda=lambda m: (m, modules.LinearAdapter),
+                                                kwargs_lambda=lambda m: {
+                                                    'inplanes': m.in_features,
+                                                    'outplanes': m.out_featues,
+                                                    'bias': m.bias,
+                                                    'peft_ratio': peft_ratio,
+                                                })
             case 'freeze':
                 for _, module, _ in target_modules:
                     module.weight.requires_grad = False
