@@ -71,7 +71,7 @@ def main():
                     fine_tuning.replace_module(model, name, modules.ParallelAdapter, args_lambda=lambda m: (m, modules.LinearAdapter),
                                                 kwargs_lambda=lambda m: {
                                                     'inplanes': m.in_features,
-                                                    'outplanes': m.out_featues,
+                                                    'outplanes': m.out_features,
                                                     'bias': m.bias,
                                                     'peft_ratio': peft_ratio,
                                                 })
