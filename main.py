@@ -49,7 +49,7 @@ def main():
 
         match args.peft:
             case 'lora':
-                model = fine_tuning.get_lora_model(model, target_children=target_children, rank=args.lora_rank, lora_alpha=args.lora_alpha, lora_dropout=args.lora_dropout)
+                model = fine_tuning.get_lora_model(model, target_modules, lora_alpha=args.lora_alpha, lora_dropout=args.lora_dropout)
             case 'prune':
                 ignored_modules = [module for name, module in named_modules.items() 
                                    if name and not any(name.startswith(target) for target in args.peft_targets)]

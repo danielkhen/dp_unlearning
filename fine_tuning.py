@@ -20,12 +20,9 @@ def unfreeze_peft_model(model):
 
             param.requires_grad = True
 
-def get_lora_model(model, target_children, rank, lora_alpha, lora_dropout):
-    target_modules = [module_name for child in target_children 
-                        for module_name, module in child.named_modules() 
-                        if isinstance(module, PEFT_SUPPORTED_TYPES)]
-    
-    model = get_peft_model(model, LoraConfig(target_modules=target_modules, r=rank, lora_alpha=lora_alpha, lora_dropout=lora_dropout))
+def get_lora_model(model, rank_pattern, lora_alpha, lora_dropout):
+    target_modules = rank_pattern.keys()
+    model = get_peft_model(model, LoraConfig(target_modules=target_modules, rank_pattern=rank_pattern, lora_alpha=lora_alpha, lora_dropout=lora_dropout))
     unfreeze_peft_model(model)
 
     return model
