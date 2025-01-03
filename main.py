@@ -42,22 +42,20 @@ def main():
 
         named_modules = dict(model.named_modules())
         peft_modules = tuple(getattr(nn, module) for module in args.peft_modules)                                   
-        target_children = [named_modules[name] for name in args.peft_targets]
-        target_modules = {(f'{name}.{module_name}' if module_name else name): peft_ratio for name, peft_ratio in zip(args.peft_targets, args.peft_ratio)
-                          for module_name, module in named_modules[name].named_modules()
-                          if not peft_modules or isinstance(module, peft_modules)}
 
+        target_modules = [(f'{name}.{module_name}' if module_name else name, module, peft_ratio)
+                            for name, peft_ratio in zip(args.peft_targets, args.peft_ratio)
+                            for module_name, module in named_modules[name].named_modules()
+                            if not peft_modules or isinstance(module, peft_modules)]
+    
         match args.peft:
             case 'lora':
                 model = fine_tuning.get_lora_model(model, target_modules, lora_alpha=args.lora_alpha, lora_dropout=args.lora_dropout)
             case 'prune':
-                ignored_modules = [module for name, module in named_modules.items() 
-                                   if name and not any(name.startswith(target) for target in args.peft_targets)]
-                pruning_ratio_dict = {named_modules[name]: pruning_ratio for name, pruning_ratio in target_modules.items()}
-                fine_tuning.prune(model, ignored_layers=ignored_modules, importance=args.pruning_importance, pruning_ratio_dict=pruning_ratio_dict)
+                fine_tuning.prune(model, target_modules, importance=args.pruning_importance)
             case 'conv-adapter':
-                for module, peft_ratio in target_modules.items():
-                    fine_tuning.replace_module(model, module, modules.ParallelAdapter, args_lambda=lambda m: (m, modules.ConvAdapter),
+                for name, _, peft_ratio in target_modules:
+                    fine_tuning.replace_module(model, name, modules.ParallelAdapter, args_lambda=lambda m: (m, modules.ConvAdapter),
                                                 kwargs_lambda=lambda m: {
                                                     'inplanes': m.in_channels,
                                                     'outplanes': m.out_channels,
@@ -67,22 +65,9 @@ def main():
                                                     'padding': m.padding,
                                                     'weight_standardization': args.weight_standardization
                                                 })
-            case 'butterfly':
-                for module in target_modules:
-                    fine_tuning.replace_module(model, module, modules.ParallelAdapter, args_lambda=lambda m: (m, modules.ButterflyConv2d),
-                                               kwargs_lambda=lambda m: {
-                                                    'in_channels': m.in_channels,
-                                                    'out_channels': m.out_channels,
-                                                    #'width': m.out_channels // args.bottleneck_ratio,
-                                                    'kernel_size': m.kernel_size,
-                                                    'stride': m.stride,
-                                                    'padding': m.padding
-                                                })
             case 'freeze':
-                for child in target_children:
-                    for module in child.modules():
-                        if isinstance(module, (nn.Conv2d, nn.Linear)):
-                            module.weight.requires_grad = False
+                for _, module, _ in target_modules:
+                    module.weight.requires_grad = False
 
         print(f"Number of trainable parameters using PEFT method {args.peft}: {sum(param.numel() for param in model.parameters() if param.requires_grad)}")
 

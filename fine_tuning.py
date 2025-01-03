@@ -3,11 +3,9 @@ import torch
 import math
 import torch_pruning as tp
 
-from peft import get_peft_model, LoraConfig
-from torch.nn.utils import prune
-from torch.nn import Linear, Conv2d
+from torch import nn
 
-PEFT_SUPPORTED_TYPES = (Linear, Conv2d)
+from peft import get_peft_model, LoraConfig
 
 def unfreeze_peft_model(model):
     for name, module in model.named_modules():
@@ -20,8 +18,17 @@ def unfreeze_peft_model(model):
 
             param.requires_grad = True
 
-def get_lora_model(model, rank_pattern, lora_alpha, lora_dropout):
-    target_modules = rank_pattern.keys()
+def peft_ratio_to_rank(module, ratio):
+    if isinstance(module, nn.Linear):
+        return min(module.in_features, module.out_features) // ratio
+    elif isinstance(module, nn.Conv2d):
+        return min(module.in_channels, module.out_channels) // ratio
+
+
+def get_lora_model(model, target_modules, lora_alpha, lora_dropout):
+    rank_pattern = {name: peft_ratio_to_rank(module, peft_ratio) for name, module, peft_ratio in target_modules}
+    print(rank_pattern)
+    target_modules = [name for name, _, _ in target_modules]
     model = get_peft_model(model, LoraConfig(target_modules=target_modules, rank_pattern=rank_pattern, lora_alpha=lora_alpha, lora_dropout=lora_dropout))
     unfreeze_peft_model(model)
 
@@ -52,9 +59,10 @@ def get_lora_model(model, rank_pattern, lora_alpha, lora_dropout):
 #     for module in target_modules:
 #         prune.l1_unstructured(module, 'weight', amount=amount)
 
-def prune(model, ignored_layers, importance, pruning_ratio_dict, importance_kwargs={}):
-    pruning_ratio_dict = {module: 1 - 1/math.sqrt(ratio) for module, ratio in pruning_ratio_dict.items()}
+def prune(model, target_modules, importance, importance_kwargs={}):
     importance = getattr(tp.importance, importance)
+    pruning_ratio_dict = {module: 1 - 1/math.sqrt(peft_ratio) for _, module, peft_ratio in target_modules}
+    ignored_layers = set(name for name, _ in model.named_modules()) - set(name for name, _, _ in target_modules)
 
     pruner = tp.pruner.MetaPruner(
         model,

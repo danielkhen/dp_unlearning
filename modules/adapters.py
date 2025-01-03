@@ -10,7 +10,7 @@ class ConvAdapter(nn.Module):
         super().__init__()
 
         # Downsample
-        width = int(outplanes//peft_ratio)
+        width = int(min(inplanes, outplanes)//peft_ratio)
         self.conv1 = nn.Conv2d(inplanes, width, kernel_size=kernel_size, stride=stride, padding=padding, bias=False)
         self.act = act_layer()
         # Regular conv
