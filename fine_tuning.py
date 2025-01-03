@@ -27,7 +27,6 @@ def peft_ratio_to_rank(module, ratio):
 
 def get_lora_model(model, target_modules, lora_alpha, lora_dropout):
     rank_pattern = {name: peft_ratio_to_rank(module, peft_ratio) for name, module, peft_ratio in target_modules}
-    print(rank_pattern)
     target_modules = [name for name, _, _ in target_modules]
     model = get_peft_model(model, LoraConfig(target_modules=target_modules, rank_pattern=rank_pattern, lora_alpha=lora_alpha, lora_dropout=lora_dropout))
     unfreeze_peft_model(model)
