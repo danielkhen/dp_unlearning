@@ -70,7 +70,7 @@ def train(model, train_loader, test_loader, criterion, optimizer, weights_path, 
             torch.save(state_dict | {'model': checkpoint_model.state_dict()}, weights_path + '.checkpoint') # Merge state dict so it doesn't sit on memory
 
     # Output model statistics
-    test_avg_loss, test_accuracy = tester.test(model, test_loader, criterion)
+    test_avg_loss, test_accuracy = tester.test(checkpoint_model, test_loader, criterion)
     training_end_time = time.time()
     print(f"Training finished in {training_end_time - training_start_time} seconds: \n" +
           f"Test loss: {test_avg_loss}, Test accuracy: {test_accuracy:.2f}")
@@ -78,7 +78,7 @@ def train(model, train_loader, test_loader, criterion, optimizer, weights_path, 
     state_dict['time'] = training_end_time - training_start_time
     state_dict['loss'] = test_avg_loss
     state_dict['accuracy'] = test_accuracy
-    state_dict['model'] = model.state_dict()
+    state_dict['model'] = checkpoint_model.state_dict()
     
     # Save model weightsmodel
     torch.save(state_dict, weights_path)

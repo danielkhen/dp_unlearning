@@ -62,7 +62,7 @@ def prune(model, target_modules, importance, importance_kwargs={}):
     importance = getattr(tp.importance, importance)
     pruning_ratio_dict = {module: 1 - 1/math.sqrt(peft_ratio) for _, module, peft_ratio in target_modules}
     ignored_layers = set(name for name, _ in model.named_modules()) - set(name for name, _, _ in target_modules)
-
+    
     pruner = tp.pruner.MetaPruner(
         model,
         torch.randn(1, 3, static.IMG_SIZE, static.IMG_SIZE),
