@@ -52,7 +52,8 @@ def main():
             case 'lora':
                 model = fine_tuning.get_lora_model(model, target_modules, lora_alpha=args.lora_alpha, lora_dropout=args.lora_dropout)
             case 'prune':
-                fine_tuning.prune(model, target_modules, importance=args.pruning_importance)
+                ignored_layers = [name for name in named_modules.keys() if not any(name.startswith(target) for target in args.peft_targets)]
+                fine_tuning.prune(model, target_modules, ignored_layers, importance=args.pruning_importance)
             case 'conv-adapter':
                 for name, _, peft_ratio in target_modules:
                     fine_tuning.replace_module(model, name, modules.ParallelAdapter, args_lambda=lambda m: (m, modules.ConvAdapter),

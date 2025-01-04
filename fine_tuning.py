@@ -2,9 +2,10 @@ import static
 import torch
 import math
 import torch_pruning as tp
+import torch.nn.functional as F
 
 from torch import nn
-
+from timm.models.vision_transformer import Attention
 from peft import get_peft_model, LoraConfig
 
 def unfreeze_peft_model(model):
@@ -58,10 +59,40 @@ def get_lora_model(model, target_modules, lora_alpha, lora_dropout):
 #     for module in target_modules:
 #         prune.l1_unstructured(module, 'weight', amount=amount)
 
-def prune(model, target_modules, importance, importance_kwargs={}):
+def forward(self, x):
+    """https://github.com/huggingface/pytorch-image-models/blob/054c763fcaa7d241564439ae05fbe919ed85e614/timm/models/vision_transformer.py#L79"""
+    B, N, C = x.shape
+    qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, self.head_dim).permute(2, 0, 3, 1, 4)
+    q, k, v = qkv.unbind(0)
+    q, k = self.q_norm(q), self.k_norm(k)
+
+    if self.fused_attn:
+        x = F.scaled_dot_product_attention(
+            q, k, v,
+            dropout_p=self.attn_drop.p,
+        )
+    else:
+        q = q * self.scale
+        attn = q @ k.transpose(-2, -1)
+        attn = attn.softmax(dim=-1)
+        attn = self.attn_drop(attn)
+        x = attn @ v
+
+    x = x.transpose(1, 2).reshape(B, N, -1) # original implementation: x = x.transpose(1, 2).reshape(B, N, C)
+    x = self.proj(x)
+    x = self.proj_drop(x)
+    return x
+
+def prune(model, target_modules, ignored_layers, importance, importance_kwargs={}):
     importance = getattr(tp.importance, importance)
-    pruning_ratio_dict = {module: 1 - 1/math.sqrt(peft_ratio) for _, module, peft_ratio in target_modules}
-    ignored_layers = set(name for name, _ in model.named_modules()) - set(name for name, _, _ in target_modules)
+    global_pruning = set(peft_ratio for _, _, peft_ratio in target_modules) == 1
+    pruning_ratio_dict = {} if global_pruning else {module: 1 - 1/math.sqrt(peft_ratio) for _, module, peft_ratio in target_modules}
+    num_heads = {}
+
+    for _, module, _ in target_modules:
+        if isinstance(module, Attention):
+            module.forward = forward.__get__(module, Attention) # https://stackoverflow.com/questions/50599045/python-replacing-a-function-within-a-class-of-a-module
+            num_heads[module.qkv] = module.num_heads 
 
     pruner = tp.pruner.MetaPruner(
         model,
@@ -69,10 +100,16 @@ def prune(model, target_modules, importance, importance_kwargs={}):
         importance=importance(**importance_kwargs),
         pruning_ratio_dict=pruning_ratio_dict,
         ignored_layers=ignored_layers,
-        global_pruning=True
+        global_pruning=global_pruning,
+        num_heads=num_heads
     )
 
     pruner.step()
+
+    for _, module, _ in target_modules:
+        if isinstance(module, Attention):
+            module.num_heads = pruner.num_heads[module.qkv]
+            module.head_dim = module.qkv.out_features // (3 * module.num_heads)
 
 
 # Replaces blocks directly under model
