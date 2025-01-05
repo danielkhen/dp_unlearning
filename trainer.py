@@ -130,6 +130,10 @@ def train_epoch_dp(model, train_loader, criterion, optimizer, augmentation_multi
         # Move inputs and labels to the specified device
         inputs, labels = inputs.to(static.CUDA), labels.to(static.CUDA)
 
+        augmentation_remainder = train_loader.size(0) % augmentation_multiplicity
+        if augmentation_remainder != 0:
+            train_loader = train_loader[:-augmentation_remainder,...]
+
         sum += len(train_loader)
 
         # Compute predictions
@@ -146,9 +150,8 @@ def train_epoch_dp(model, train_loader, criterion, optimizer, augmentation_multi
         loss.backward()
 
         # Average grad samples over augmentations
-        if augmentation_multiplicity != 1:
-            for param in model.parameters():
-                param.grad_sample = torch.mean(torch.stack(torch.split(param.grad_sample, augmentation_multiplicity)), dim=1)
+        for param in model.parameters():
+            param.grad_sample = torch.mean(torch.stack(torch.split(param.grad_sample, augmentation_multiplicity)), dim=1)
         
         # Adjust learning weights and zero gradients
         optimizer.step()
