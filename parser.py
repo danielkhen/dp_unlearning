@@ -21,7 +21,7 @@ parser.add_argument('model', type=str, help='model architecture name')
 parser.add_argument('output', type=str, help='path of pth file to save model weights to')
 
 parser.add_argument('--test', '-t', action='store_true', help='only show previous training results for input model')
-parser.add_argument('--learning-rate', '--lr', default=3e-4, type=float, help='learning rate')
+parser.add_argument('--learning-rate', '--lr', default=1e-1, type=float, help='learning rate')
 parser.add_argument('--batch-size', '--bs', default=128, type=int, help='batch size')
 parser.add_argument('--data-augmentation', '--da', action='store_true', help='data augmentation')
 parser.add_argument('--pretrained', '-p', action='store_true', help='wether model comes with pre-trained weights')
@@ -34,10 +34,11 @@ parser.add_argument('--augmentation-multiplicity', '--am', default=1, type=int, 
 parser.add_argument('--weight-standardization', '--ws', action='store_true', help='Replace Conv2D layers that come before normallization layers with weight standardization version')
 
 parser.add_argument('--cosine-anealing', '--ca', action='store_true', help='use learning rate cosine anealing scheduler')
+parser.add_argument('--eta-min', default=0, type=float, help='min learning rate when cosine anealing')
 parser.add_argument('--exponential-moving-average', '--ema', action='store_true', help='use exponential moving average scheduler')
 parser.add_argument('--ema-decay', default=0.9, type=float, help='decay for exponential moving average')
 
-parser.add_argument('--weight-decay', default=5e-4, type=float, help='weight decay used in optimizer')
+parser.add_argument('--weight-decay', default=0, type=float, help='weight decay used in optimizer')
 parser.add_argument('--num-workers', default=8, type=int, help='number of workers (dataset download)')
 parser.add_argument('--checkpoint-every', default=10, type=int, help='number of epochs to checkpoint the model')
 
