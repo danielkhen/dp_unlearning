@@ -124,7 +124,7 @@ def train_epoch_dp(model, train_loader, criterion, optimizer, augmentation_multi
     correct_predictions = 0
     total_predictions = 0
     model.train() # Set the model to training mode
-    remainder =0
+    sum =0
 
     for inputs, labels in train_loader:
         # Move inputs and labels to the specified device
@@ -133,7 +133,8 @@ def train_epoch_dp(model, train_loader, criterion, optimizer, augmentation_multi
         augmentation_remainder = len(train_loader) % augmentation_multiplicity
         if augmentation_remainder != 0:
             train_loader = train_loader[:-augmentation_remainder,...]
-            remainder += augmentation_remainder
+
+        sum += len(train_loader)
 
         # Compute predictions
         outputs = model(inputs)
@@ -159,7 +160,7 @@ def train_epoch_dp(model, train_loader, criterion, optimizer, augmentation_multi
     # Calculate the average loss and accuracy
     avg_loss = running_loss / (len(train_loader) * augmentation_multiplicity)
     accuracy = 100 * correct_predictions / total_predictions
-    print(remainder)
+    print(sum)
 
     return avg_loss, accuracy
 
