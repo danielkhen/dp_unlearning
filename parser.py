@@ -53,9 +53,9 @@ parser.add_argument('--fix-dp-kwargs', default={}, nargs='*', action=ParseKwargs
 parser.add_argument('--peft', default=None, type=str, help='the peft method to use, either lora, prune or prune-grads',
                     choices=('lora', 'prune', 'conv-adapter', 'linear-adapter', 'freeze'))
 parser.add_argument('--peft-targets', nargs='*', type=str, help='list of target modules to apply peft on')
-parser.add_argument('--lora-rank', default=32, type=int, help='rank for LoRA')
 parser.add_argument('--lora-alpha', default=32, type=int, help='alpha for LoRA')
 parser.add_argument('--lora-dropout', default=1e-1, type=float, help='dropout for LoRA')
 parser.add_argument('--peft-ratio', default=[4], nargs='*', type=int, help='The ratio to decrease the features width in adapter peft')
 parser.add_argument('--peft-modules', default=[], nargs='*', type=str, help='modules from torch.nn to apply peft on')
+parser.add_argument('--global-pruning', action='store_true', help='should pruning be global for all layers')
 parser.add_argument('--pruning-importance', default='GroupNormImportance', type=str, help='importance function to use in pruning')

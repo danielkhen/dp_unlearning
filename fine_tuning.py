@@ -83,21 +83,29 @@ def forward(self, x):
     x = self.proj_drop(x)
     return x
 
-def prune(model, target_modules, ignored_layers, importance, importance_kwargs={}):
-    importance = getattr(tp.importance, importance)
-    global_pruning = set(peft_ratio for _, _, peft_ratio in target_modules) == 1
-    pruning_ratio_dict = {} if global_pruning else {module: 1 - 1/math.sqrt(peft_ratio) for _, module, peft_ratio in target_modules}
+def peft_ratio_to_pruning_ratio(x, linear=False):
+    if not linear:
+        x = math.sqrt(x)
+
+    return 1 - 1/x
+
+def prune(model, target_modules, ignored_layers, importance, global_pruning=False, importance_kwargs={}):
     num_heads = {}
 
     for _, module, _ in target_modules:
         if isinstance(module, Attention):
             module.forward = forward.__get__(module, Attention) # https://stackoverflow.com/questions/50599045/python-replacing-a-function-within-a-class-of-a-module
             num_heads[module.qkv] = module.num_heads 
+    
+    importance = getattr(tp.importance, importance)
+    pruning_ratio_dict = {} if global_pruning else {module: peft_ratio_to_pruning_ratio(peft_ratio, linear=bool(num_heads)) for _, module, peft_ratio in target_modules}
+    pruning_ratio = peft_ratio_to_pruning_ratio(target_modules[0][2], linear=bool(num_heads))
 
     pruner = tp.pruner.MetaPruner(
         model,
         torch.randn(1, 3, static.IMG_SIZE, static.IMG_SIZE),
         importance=importance(**importance_kwargs),
+        pruning_ratio=pruning_ratio,
         pruning_ratio_dict=pruning_ratio_dict,
         ignored_layers=ignored_layers,
         global_pruning=global_pruning,
