@@ -94,7 +94,6 @@ def train_epoch(model, train_loader, criterion, optimizer):
     for inputs, labels in train_loader:
         # Move inputs and labels to the specified device
         inputs, labels = inputs.to(static.CUDA), labels.to(static.CUDA)
-        print(len(train_loader))
 
         # Compute predictions
         outputs = model(inputs)
@@ -162,7 +161,6 @@ def train_epoch_dp(model, train_loader, criterion, optimizer, augmentation_multi
     # Calculate the average loss and accuracy
     avg_loss = running_loss / (len(train_loader) * augmentation_multiplicity)
     accuracy = 100 * correct_predictions / total_predictions
-    print(sum)
 
     return avg_loss, accuracy
 
