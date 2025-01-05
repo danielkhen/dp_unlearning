@@ -150,8 +150,9 @@ def train_epoch_dp(model, train_loader, criterion, optimizer, augmentation_multi
         loss.backward()
 
         # Average grad samples over augmentations
-        for param in model.parameters():
-            param.grad_sample = torch.mean(torch.stack(torch.split(param.grad_sample, augmentation_multiplicity)), dim=1)
+        if augmentation_multiplicity != 0:
+            for param in model.parameters():
+                param.grad_sample = torch.mean(torch.stack(torch.split(param.grad_sample, augmentation_multiplicity)), dim=1)
         
         # Adjust learning weights and zero gradients
         optimizer.step()
