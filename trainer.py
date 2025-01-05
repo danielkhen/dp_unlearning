@@ -131,14 +131,6 @@ def train_epoch_dp(model, train_loader, criterion, optimizer, augmentation_multi
         # Move inputs and labels to the specified device
         inputs, labels = inputs.to(static.CUDA), labels.to(static.CUDA)
 
-        augmentation_remainder = inputs.size(0) % augmentation_multiplicity
-        if augmentation_remainder != 0:
-            print(augmentation_remainder)
-            print(inputs.shape, labels.shape)
-            inputs = inputs[:-augmentation_remainder,...]
-            labels = labels[:-augmentation_remainder]
-            print(inputs.shape, labels.shape)
-
         sum += inputs.size(0)
 
         # Compute predictions
