@@ -89,7 +89,7 @@ def main():
     schedulers = []
 
     if args.cosine_anealing:
-        schedulers.append(optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs))
+        schedulers.append(optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs, eta_min = args.learning_rate * 1e-2))
 
     if args.exponential_moving_average:
         ema_model = AveragedModel(model, multi_avg_fn=get_ema_multi_avg_fn(args.ema_decay), use_buffers=True, device=static.CUDA)
