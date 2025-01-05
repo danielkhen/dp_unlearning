@@ -125,13 +125,17 @@ def train_epoch_dp(model, train_loader, criterion, optimizer, augmentation_multi
     correct_predictions = 0
     total_predictions = 0
     model.train() # Set the model to training mode
-    sum =0
 
     for inputs, labels in train_loader:
         # Move inputs and labels to the specified device
         inputs, labels = inputs.to(static.CUDA), labels.to(static.CUDA)
 
-        sum += inputs.size(0)
+        # Cut incomplete augmentations
+        augmentation_remainder = inputs.size(0) % augmentation_multiplicity
+
+        if augmentation_remainder != 0:
+            inputs = inputs[:-augmentation_remainder,...]
+            labels = labels[:-augmentation_remainder]
 
         # Compute predictions
         outputs = model(inputs)
