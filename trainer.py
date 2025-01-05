@@ -130,7 +130,8 @@ def train_epoch_dp(model, train_loader, criterion, optimizer, augmentation_multi
         # Move inputs and labels to the specified device
         inputs, labels = inputs.to(static.CUDA), labels.to(static.CUDA)
 
-        augmentation_remainder = train_loader.size(0) % augmentation_multiplicity
+        print(len(train_loader))
+        augmentation_remainder = len(train_loader) % augmentation_multiplicity
         if augmentation_remainder != 0:
             train_loader = train_loader[:-augmentation_remainder,...]
 
