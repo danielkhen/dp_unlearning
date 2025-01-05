@@ -94,6 +94,7 @@ def train_epoch(model, train_loader, criterion, optimizer):
     for inputs, labels in train_loader:
         # Move inputs and labels to the specified device
         inputs, labels = inputs.to(static.CUDA), labels.to(static.CUDA)
+        print(len(train_loader))
 
         # Compute predictions
         outputs = model(inputs)
@@ -130,12 +131,11 @@ def train_epoch_dp(model, train_loader, criterion, optimizer, augmentation_multi
         # Move inputs and labels to the specified device
         inputs, labels = inputs.to(static.CUDA), labels.to(static.CUDA)
 
-        print(len(train_loader))
-        augmentation_remainder = len(train_loader) % augmentation_multiplicity
+        augmentation_remainder = inputs.size(0) % augmentation_multiplicity
         if augmentation_remainder != 0:
             train_loader = train_loader[:-augmentation_remainder,...]
 
-        sum += len(train_loader)
+        sum += inputs.size(0)
 
         # Compute predictions
         outputs = model(inputs)
