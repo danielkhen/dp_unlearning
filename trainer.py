@@ -136,7 +136,7 @@ def train_epoch_dp(model, train_loader, criterion, optimizer, augmentation_multi
             print(augmentation_remainder)
             print(inputs.shape, labels.shape)
             inputs = inputs[:-augmentation_remainder,...]
-            labels = inputs[:-augmentation_remainder,...]
+            labels = labels[:-augmentation_remainder]
             print(inputs.shape, labels.shape)
 
         sum += inputs.size(0)
