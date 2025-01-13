@@ -35,7 +35,7 @@ class ConvAdapter(nn.Module):
         self.act = act_layer()
         # Regular conv
         self.conv2 = nn.Conv2d(width, outplanes, kernel_size=1, bias=False)
-        self.se = nn.Parameter(torch.ones((1, outplanes, 1, 1)), requires_grad=True)
+        self.se = nn.Parameter(torch.zeros((1, outplanes, 1, 1)), requires_grad=True)
 
         if weight_standardization:
             self.conv1 = Conv2dWS(self.conv1)

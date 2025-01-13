@@ -41,7 +41,8 @@ def main():
             args.peft_ratio = args.peft_ratio * len(args.peft_targets)
 
         named_modules = dict(model.named_modules())
-        peft_modules = tuple(getattr(nn, module) for module in args.peft_modules)                                   
+        peft_modules = tuple(getattr(nn, module) for module in args.peft_modules)
+        peft_modules = []                                
 
         target_modules = [(f'{name}.{module_name}' if module_name else name, module, peft_ratio)
                             for name, peft_ratio in zip(args.peft_targets, args.peft_ratio)

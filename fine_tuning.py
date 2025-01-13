@@ -147,7 +147,6 @@ def replace_module(model, target, module_cls, freeze=True, args_lambda=lambda _:
             param.requires_grad = False
 
 
-    
 def linear_freeze_forward(self, x):
     out = nn.functional.linear(x, self.weight, self.bias)
 
@@ -169,7 +168,7 @@ def conv_freeze_forward(self, x):
     if hasattr(self, 'prune_in_mask'):
         x = x[:, self.prune_in_mask]
 
-    prune_out = nn.functional.conv2d(x[self.prune_in_mask], self.prune_weight, self.prune_bias, self.stride, self.padding, self.dilation)
+    prune_out = nn.functional.conv2d(x, self.prune_weight, self.prune_bias, self.stride, self.padding, self.dilation)
 
     if hasattr(self, 'prune_out_mask'):
         out[:, self.prune_out_mask] += prune_out
@@ -177,6 +176,7 @@ def conv_freeze_forward(self, x):
         out += prune_out
 
     return out
+
 
 class FreezePruner(tp.BasePruningFunc):
     def _init_layer(self, layer: nn.Module):
