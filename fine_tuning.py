@@ -4,6 +4,7 @@ import math
 import torch_pruning as tp
 import torch.nn.functional as F
 
+from typing import Sequence
 from torch import nn
 from timm.models.vision_transformer import Attention
 from peft import get_peft_model, LoraConfig
@@ -34,32 +35,7 @@ def get_lora_model(model, target_modules, lora_alpha, lora_dropout):
 
     return model
 
-# def get_pruning_mask(param, amount):
-#     with torch.no_grad():
-#         flattened_weights = param.abs().view(-1)
-#         threshold_index = int(len(flattened_weights) * amount)
-#         threshold_value = torch.sort(flattened_weights)[0][threshold_index]
-
-#         return (param.abs() >= threshold_value)
-
-# def prune_gradients(target_children, amount):
-#     target_parameters = [module.weight for child in target_children 
-#                         for module in child.modules() 
-#                         if isinstance(module, PEFT_SUPPORTED_TYPES)]
-    
-#     for param in target_parameters:
-#         mask = get_pruning_mask(param, amount=amount).to(static.CUDA)
-#         param.register_hook(lambda grad, mask=mask: grad * mask) # Ensure mask scope is in lambda function
-
-# def prune_model(target_children, amount):
-#     target_modules = [module for child in target_children 
-#                         for module in child.modules() 
-#                         if isinstance(module, PEFT_SUPPORTED_TYPES)]
-    
-#     for module in target_modules:
-#         prune.l1_unstructured(module, 'weight', amount=amount)
-
-def forward(self, x):
+def attention_forward(self, x):
     """https://github.com/huggingface/pytorch-image-models/blob/054c763fcaa7d241564439ae05fbe919ed85e614/timm/models/vision_transformer.py#L79"""
     B, N, C = x.shape
     qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, self.head_dim).permute(2, 0, 3, 1, 4)
@@ -89,12 +65,12 @@ def peft_ratio_to_pruning_ratio(x, linear=False):
 
     return 1 - 1/x
 
-def prune(model, target_modules, ignored_layers, importance, global_pruning=False, importance_kwargs={}):
+def prune(model, target_modules, ignored_layers, importance, global_pruning=False, importance_kwargs={}, freeze=True):
     num_heads = {}
 
     for _, module, _ in target_modules:
         if isinstance(module, Attention):
-            module.forward = forward.__get__(module, Attention) # https://stackoverflow.com/questions/50599045/python-replacing-a-function-within-a-class-of-a-module
+            module.forward = attention_forward.__get__(module, Attention) # https://stackoverflow.com/questions/50599045/python-replacing-a-function-within-a-class-of-a-module
             num_heads[module.qkv] = module.num_heads 
     
     importance = getattr(tp.importance, importance)
@@ -109,17 +85,32 @@ def prune(model, target_modules, ignored_layers, importance, global_pruning=Fals
         pruning_ratio_dict=pruning_ratio_dict,
         ignored_layers=ignored_layers,
         global_pruning=global_pruning,
-        num_heads=num_heads
+        num_heads=num_heads,
+        customized_pruners={nn.Conv2d: FreezePruner(), nn.Linear: FreezePruner()}
     )
+            
+    if freeze:
+        for group in pruner.step(interactive=True):
+            for dep, idxs in group:
+                layer = dep.target.module
+                pruning_fn = dep.handler
+                freeze_pruner = FreezePruner()
 
-    pruner.step()
+                if pruning_fn in [tp.prune_conv_in_channels, tp.prune_linear_in_channels]:
+                    freeze_pruner.prune_in_channels(layer, idxs)
+                elif pruning_fn in [tp.prune_conv_out_channels, tp.prune_linear_out_channels]:
+                    freeze_pruner.prune_out_channels(layer, idxs)
+                else:
+                    pruning_fn(layer, idxs)
+                              
+    else:
+        pruner.step()
 
-    for _, module, _ in target_modules:
-        if isinstance(module, Attention):
-            module.num_heads = pruner.num_heads[module.qkv]
-            module.head_dim = module.qkv.out_features // (3 * module.num_heads)
-
-
+        for _, module, _ in target_modules:
+            if isinstance(module, Attention):
+                module.num_heads = pruner.num_heads[module.qkv]
+                module.head_dim = module.qkv.out_features // (3 * module.num_heads)
+    
 # Replaces blocks directly under model
 def replace_blocks(model, block_class, **kwargs):
     for name, block in model.named_children():
@@ -154,3 +145,77 @@ def replace_module(model, target, module_cls, freeze=True, args_lambda=lambda _:
     if freeze:
         for param in module.parameters():
             param.requires_grad = False
+
+
+    
+def linear_freeze_forward(self, x):
+    out = nn.functional.linear(x, self.weight, self.bias)
+
+    if hasattr(self, 'prune_in_mask'):
+        x = x[..., self.prune_in_mask]
+
+    prune_out = nn.functional.linear(x, self.prune_weight, self.prune_bias)
+
+    if hasattr(self, 'prune_out_mask'):
+        out[..., self.prune_out_mask] += prune_out
+    else:
+        out += prune_out
+
+    return out
+
+def conv_freeze_forward(self, x):
+    out = nn.functional.conv2d(x, self.weight, self.bias, self.stride, self.padding, self.dialtion) # no groups pls
+
+    if hasattr(self, 'prune_in_mask'):
+        x = x[:, self.prune_in_mask]
+
+    prune_out = nn.functional.conv2d(x[self.prune_in_mask], self.prune_weight, self.prune_bias, self.stride, self.padding, self.dialtion)
+
+    if hasattr(self, 'prune_out_mask'):
+        out[:, self.prune_out_mask] += prune_out
+    else:
+        out += prune_out
+
+    return out
+
+class FreezePruner(tp.BasePruningFunc):
+    def _init_layer(self, layer: nn.Module):
+        if not hasattr(layer, 'prune_weight'):
+            layer.weight.requires_grad = False
+            layer.bias.requires_grad = False
+            layer.prune_weight = nn.Parameter(torch.zeros(layer.weight.shape), requires_grad=True)
+            layer.prune_bias = nn.Parameter(torch.zeros(layer.bias.shape), requires_grad=True)
+            
+            if isinstance(layer, nn.Linear):
+                layer.forward = linear_freeze_forward.__get__(layer, nn.Linear)
+            elif isinstance(layer, nn.Conv2d):
+                layer.forward = conv_freeze_forward.__get__(layer, nn.Conv2d)
+
+    def prune_out_channels(self, layer: nn.Module, idxs: list):
+        self._init_layer(layer)
+        layer.prune_out_mask = torch.ones(layer.weight.size(0), dtype=torch.bool)
+        layer.prune_out_mask[idxs] = False
+        layer.prune_weight = nn.Parameter(layer.prune_weight[layer.prune_out_mask], requires_grad=True)
+
+        if layer.prune_bias is not None:
+            layer.prune_bias = nn.Parameter(layer.prune_bias[layer.prune_out_mask], requires_grad=True)
+
+        layer.out_features = int(layer.prune_out_mask.sum())
+
+        return layer
+
+    def prune_in_channels(self, layer: nn.Module, idxs: Sequence[int]) -> nn.Module:
+        self._init_layer(layer)
+        layer.prune_in_mask = torch.ones(layer.weight.size(1), dtype=torch.bool)
+        layer.prune_in_mask[idxs] = False
+        layer.prune_weight = nn.Parameter(layer.prune_weight[:, layer.prune_in_mask], requires_grad=True) # Does not work with conv groups
+
+        layer.in_features = int(layer.prune_in_mask.sum())
+
+        return layer
+    
+    def get_out_channels(self, layer):
+        pass
+
+    def get_in_channels(self, layer):
+        pass
