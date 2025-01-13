@@ -100,8 +100,8 @@ def prune(model, target_modules, ignored_layers, importance, global_pruning=Fals
                     freeze_pruner.prune_in_channels(layer, idxs)
                 elif pruning_fn in [tp.prune_conv_out_channels, tp.prune_linear_out_channels]:
                     freeze_pruner.prune_out_channels(layer, idxs)
-                else:
-                    pruning_fn(layer, idxs)
+                # else:
+                #     pruning_fn(layer, idxs)
                               
     else:
         pruner.step()
