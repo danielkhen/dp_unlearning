@@ -183,7 +183,7 @@ class FreezePruner(tp.BasePruningFunc):
         if not hasattr(layer, 'prune_weight'):
             layer.weight.requires_grad = False
             layer.prune_weight = nn.Parameter(torch.zeros(layer.weight.shape), requires_grad=True)
-            
+
             if layer.bias:
                 layer.bias.requires_grad = False
                 layer.prune_bias = nn.Parameter(torch.zeros(layer.bias.shape), requires_grad=True)
@@ -199,7 +199,7 @@ class FreezePruner(tp.BasePruningFunc):
         layer.prune_out_mask[idxs] = False
         layer.prune_weight = nn.Parameter(layer.prune_weight[layer.prune_out_mask], requires_grad=True)
 
-        if layer.prune_bias is not None:
+        if layer.bias:
             layer.prune_bias = nn.Parameter(layer.prune_bias[layer.prune_out_mask], requires_grad=True)
 
         layer.out_features = int(layer.prune_out_mask.sum())
