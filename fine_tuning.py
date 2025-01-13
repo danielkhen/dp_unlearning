@@ -164,12 +164,12 @@ def linear_freeze_forward(self, x):
     return out
 
 def conv_freeze_forward(self, x):
-    out = nn.functional.conv2d(x, self.weight, self.bias, self.stride, self.padding, self.dialtion) # no groups pls
+    out = nn.functional.conv2d(x, self.weight, self.bias, self.stride, self.padding, self.dilation) # no groups pls
 
     if hasattr(self, 'prune_in_mask'):
         x = x[:, self.prune_in_mask]
 
-    prune_out = nn.functional.conv2d(x[self.prune_in_mask], self.prune_weight, self.prune_bias, self.stride, self.padding, self.dialtion)
+    prune_out = nn.functional.conv2d(x[self.prune_in_mask], self.prune_weight, self.prune_bias, self.stride, self.padding, self.dilation)
 
     if hasattr(self, 'prune_out_mask'):
         out[:, self.prune_out_mask] += prune_out
