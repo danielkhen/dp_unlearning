@@ -182,9 +182,11 @@ class FreezePruner(tp.BasePruningFunc):
     def _init_layer(self, layer: nn.Module):
         if not hasattr(layer, 'prune_weight'):
             layer.weight.requires_grad = False
-            layer.bias.requires_grad = False
             layer.prune_weight = nn.Parameter(torch.zeros(layer.weight.shape), requires_grad=True)
-            layer.prune_bias = nn.Parameter(torch.zeros(layer.bias.shape), requires_grad=True)
+            
+            if layer.bias:
+                layer.bias.requires_grad = False
+                layer.prune_bias = nn.Parameter(torch.zeros(layer.bias.shape), requires_grad=True)
             
             if isinstance(layer, nn.Linear):
                 layer.forward = linear_freeze_forward.__get__(layer, nn.Linear)
