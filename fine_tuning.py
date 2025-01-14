@@ -9,6 +9,8 @@ from torch import nn
 from timm.models.vision_transformer import Attention
 from peft import get_peft_model, LoraConfig
 from torch.nn.utils import parametrize
+from torch.nn import init
+
 def unfreeze_peft_model(model):
     for name, module in model.named_modules():
         if name.endswith('.base_layer'): 
@@ -151,7 +153,9 @@ class FreezeWeightParameterization(nn.Module):
     def __init__(self, shape):
         super().__init__()
         self.shape = shape
-        self.weight = nn.Parameter(torch.zeros(shape), requires_grad=True)
+        self.weight = nn.Parameter(init.kaiming_uniform_(torch.empty(shape)), requires_grad=True)
+        self.se = nn.Parameter(torch.zeros((shape[0]), 1), requires_grad=True)
+        self.init_weight()
         self.set_in_idxs([])
         self.set_out_idxs([])
 
@@ -159,37 +163,47 @@ class FreezeWeightParameterization(nn.Module):
         res = X.clone()
 
         if len(self.in_idxs) == self.shape[1] and len(self.out_idxs) == self.shape[0]:
-            res += self.weight
+            res += self.weight * self.se
         else:
-            res[self.out_idxs.unsqueeze(1), self.in_idxs.unsqueeze(0)] += self.weight
+            res[self.out_idxs.unsqueeze(1), self.in_idxs.unsqueeze(0)] += self.weight * self.se
 
         return res
+    
+    def init_weight(self):
+        init.kaiming_uniform_(self.weight, a=0, mode='fan_in', nonlinearity='relu')
     
     def set_in_idxs(self, idxs):
         idxs = set(range(self.shape[1])) - set(idxs)
         self.in_idxs = nn.Parameter(torch.tensor(list(idxs)), requires_grad=False)
         self.weight = nn.Parameter(self.weight[:, self.in_idxs], requires_grad=True)
+        self.init_weight()
 
     def set_out_idxs(self, idxs):
         idxs = set(range(self.shape[0])) - set(idxs)
         self.out_idxs = nn.Parameter(torch.tensor(list(idxs)), requires_grad=False)
         self.weight = nn.Parameter(self.weight[self.out_idxs], requires_grad=True)
+        self.init_weight()
     
 class FreezeBiasParameterization(nn.Module):
     def __init__(self, len):
         super().__init__()
+        self.len = len
         self.bias = nn.Parameter(torch.zeros(len), requires_grad=True)
+        self.se = nn.Parameter(torch.zeros(len), requires_grad=True)
         self.set_out_idxs([])
 
     def forward(self, X):
         res = X.clone()
 
         if len(self.out_idxs) == self.len:
-            res += self.bias
+            res += self.bias * self.se
         else:
-            res[self.out_idxs] += self.bias
+            res[self.out_idxs] += self.bias * self.se
 
         return res
+    
+    def init_bias(self):
+        init.kaiming_uniform_(self.bias, a=0, mode='fan_out', nonlinearity='relu')
     
     def set_out_idxs(self, idxs):
         idxs = set(range(self.len)) - set(idxs)
