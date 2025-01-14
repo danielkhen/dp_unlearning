@@ -148,70 +148,87 @@ def replace_module(model, target, module_cls, freeze=True, args_lambda=lambda _:
 
 
 class FreezeWeightParameterization(nn.Module):
-    def __init__(self, original_weight):
-        self.original_weight = original_weight
-        self.prune_in_mask = torch.ones(original_weight.size(1), dtype=torch.bool)
-        self.prune_out_mask = torch.ones(original_weight.size(0), dtype=torch.bool)
+    def __init__(self, shape):
+        super().__init__()
+        self.weight = nn.Parameter(torch.zeros(shape), requires_grad=True)
+        self.prune_in_mask = torch.ones(shape[1], dtype=torch.bool)
+        self.prune_out_mask = torch.ones(shape[0], dtype=torch.bool)
 
     def forward(self, X):
-        res = self.original_weight.copy()
-        res[self.prune_out_mask, self.prune_in_mask] += X
+        res = X.clone()
+
+        if all(self.prune_in_mask) and all(self.prune_out_mask):
+            res += self.weight
+        else:
+            print(self.prune_out_mask.unsqueeze(1).shape)
+            print(self.prune_in_mask.unsqueeze(0).shape)
+            print(res.shape)
+            print(self.weight.shape)
+            res[self.prune_out_mask.unsqueeze(1), self.prune_in_mask.unsqueeze(0)] += self.weight
 
         return res
     
+    def set_in_idxs(self, idxs):
+        self.prune_in_mask[idxs] = False
+        self.weight = nn.Parameter(self.weight[:, self.prune_in_mask], requires_grad=True)
+
+    def set_out_idxs(self, idxs):
+        self.prune_out_mask[idxs] = False
+        self.weight = nn.Parameter(self.weight[self.prune_out_mask], requires_grad=True)
+    
 class FreezeBiasParameterization(nn.Module):
-    def __init__(self, original_bias):
-        self.original_bias = original_bias
-        self.prune_out_mask = torch.ones(original_bias.size(0), dtype=torch.bool)
+    def __init__(self, len):
+        super().__init__()
+        self.bias = nn.Parameter(torch.zeros(len), requires_grad=True)
+        self.prune_out_mask = torch.ones(len, dtype=torch.bool)
 
     def forward(self, X):
-        res = self.original_weight.copy()
-        res[self.prune_out_mask] += X
+        res = X.clone()
+
+        if all(self.prune_out_mask):
+            res += self.bias
+        else:
+            res[self.prune_out_mask] += self.bias
 
         return res
+    
+    def set_out_idxs(self, idxs):
+        self.prune_out_mask[idxs] = False
+        self.bias = nn.Parameter(self.bias[self.prune_out_mask], requires_grad=True)
 
 
 class FreezePruner(tp.BasePruningFunc):
     def _init_layer(self, layer: nn.Module):
         if not hasattr(layer, 'parametrizations'):
             layer.weight.requires_grad = False
-            parametrize.register_parametrization(layer, 'weight', FreezeWeightParameterization(layer.weight))
-            layer.weight = nn.Parameter(torch.zeros(layer.weight.shape), requires_grad=True)
+            parametrize.register_parametrization(layer, 'weight', FreezeWeightParameterization(layer.weight.shape))
 
             if layer.bias:
                 layer.bias.requires_grad = False
-                parametrize.register_parametrization(layer, 'bias', FreezeBiasParameterization(layer.bias))
-                layer.bias = nn.Parameter(torch.zeros(layer.bias.shape), requires_grad=True)
+                parametrize.register_parametrization(layer, 'bias', FreezeBiasParameterization(layer.bias.size(0)))
 
     def prune_out_channels(self, layer: nn.Module, idxs: list):
         self._init_layer(layer)
-        mask = torch.ones(layer.weight.size(0), dtype=torch.bool)
-        mask[idxs] = False
-        layer.parametrizations.weight.prune_out_mask = mask
-        layer.weight = nn.Parameter(layer.prune_weight[layer.prune_out_mask], requires_grad=True)
+        layer.parametrizations.weight[0].set_out_idxs(idxs)
 
         if layer.bias:
-            layer.bias = nn.Parameter(layer.prune_bias[layer.prune_out_mask], requires_grad=True)
-            layer.parametrizations.bias.prune_out_mask = mask
+            layer.parametrizations.bias[0].set_out_idxs(idxs)
 
-        if isinstance(layer, nn.Conv2d):
-            layer.out_channels = int(mask.sum())
-        elif isinstance(layer, nn.Linear):
-            layer.out_features = int(mask.sum())
+        # if isinstance(layer, nn.Conv2d):
+        #     layer.out_channels = int(mask.sum())
+        # elif isinstance(layer, nn.Linear):
+        #     layer.out_features = int(mask.sum())
 
         return layer
 
     def prune_in_channels(self, layer: nn.Module, idxs: Sequence[int]) -> nn.Module:
         self._init_layer(layer)
-        mask = torch.ones(layer.weight.size(1), dtype=torch.bool)
-        mask[idxs] = False
-        layer.parametrizations.weight.prune_in_mask = mask
-        layer.weight = nn.Parameter(layer.prune_weight[:, layer.prune_in_mask], requires_grad=True) # Does not work with conv groups
+        layer.parametrizations.weight[0].set_in_idxs(idxs)
 
-        if isinstance(layer, nn.Conv2d):
-            layer.in_channels = int(mask.sum())
-        elif isinstance(layer, nn.Linear):
-            layer.in_features = int(mask.sum())
+        # if isinstance(layer, nn.Conv2d):
+        #     layer.in_channels = int(mask.sum())
+        # elif isinstance(layer, nn.Linear):
+        #     layer.in_features = int(mask.sum())
 
         return layer
     
