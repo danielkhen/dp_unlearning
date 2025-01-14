@@ -182,6 +182,7 @@ class FreezeWeightParameterization(nn.Module):
         idxs = set(range(self.shape[0])) - set(idxs)
         self.out_idxs = nn.Parameter(torch.tensor(list(idxs)), requires_grad=False)
         self.weight = nn.Parameter(self.weight[self.out_idxs], requires_grad=True)
+        self.se = nn.Parameter(self.se[self.out_idxs], requires_grad=True)
         self.init_weight()
     
 class FreezeBiasParameterization(nn.Module):
@@ -209,6 +210,7 @@ class FreezeBiasParameterization(nn.Module):
         idxs = set(range(self.len)) - set(idxs)
         self.out_idxs = nn.Parameter(torch.tensor(list(idxs)), requires_grad=False)
         self.bias = nn.Parameter(self.bias[self.out_idxs], requires_grad=True)
+        self.se = nn.Parameter(self.se[self.out_idxs], requires_grad=True)
 
 
 class FreezePruner(tp.BasePruningFunc):
