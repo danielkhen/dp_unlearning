@@ -30,12 +30,12 @@ class ConvAdapter(nn.Module):
         super().__init__()
 
         # Downsample
-        width = int(min(inplanes, outplanes)//peft_ratio)
+        width = int(max(inplanes, outplanes)//peft_ratio)
         self.conv1 = nn.Conv2d(inplanes, width, kernel_size=kernel_size, stride=stride, padding=padding, bias=False)
         self.act = act_layer()
         # Regular conv
         self.conv2 = nn.Conv2d(width, outplanes, kernel_size=1, bias=False)
-        self.se = nn.Parameter(torch.ones((1, outplanes, 1, 1)), requires_grad=True)
+        self.se = nn.Parameter(torch.zeros((1, outplanes, 1, 1)), requires_grad=True)
 
         if weight_standardization:
             self.conv1 = Conv2dWS(self.conv1)
