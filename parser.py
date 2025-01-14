@@ -60,3 +60,4 @@ parser.add_argument('--peft-ratio', default=[4], nargs='*', type=int, help='The 
 parser.add_argument('--peft-modules', default=[], nargs='*', type=str, help='modules from torch.nn to apply peft on')
 parser.add_argument('--global-pruning', action='store_true', help='should pruning be global for all layers')
 parser.add_argument('--pruning-importance', default='GroupNormImportance', type=str, help='importance function to use in pruning')
+parser.add_argument('--prune-grads', action='store_true', help='accumulate grads for epoch before pruning')

@@ -81,7 +81,7 @@ def prune(model, target_modules, ignored_layers, importance, global_pruning=Fals
 
     pruner = tp.pruner.MetaPruner(
         model,
-        torch.randn(1, 3, static.IMG_SIZE, static.IMG_SIZE),
+        torch.randn(1, 3, static.IMG_SIZE, static.IMG_SIZE, device=static.CUDA),
         importance=importance(**importance_kwargs),
         pruning_ratio=pruning_ratio,
         pruning_ratio_dict=pruning_ratio_dict,
@@ -153,8 +153,8 @@ class FreezeWeightParameterization(nn.Module):
     def __init__(self, shape):
         super().__init__()
         self.shape = shape
-        self.weight = nn.Parameter(init.kaiming_uniform_(torch.empty(shape)), requires_grad=True)
-        self.se = nn.Parameter(torch.zeros((shape[0]), *([1] * (len(shape) - 1))), requires_grad=True)
+        self.weight = nn.Parameter(init.kaiming_uniform_(torch.empty(shape, device=static.CUDA)), requires_grad=True)
+        self.se = nn.Parameter(torch.zeros((shape[0]), *([1] * (len(shape) - 1)), device=static.CUDA), requires_grad=True)
         self.init_weight()
         self.set_in_idxs([])
         self.set_out_idxs([])
@@ -174,13 +174,13 @@ class FreezeWeightParameterization(nn.Module):
     
     def set_in_idxs(self, idxs):
         idxs = set(range(self.shape[1])) - set(idxs)
-        self.in_idxs = nn.Parameter(torch.tensor(list(idxs)), requires_grad=False)
+        self.in_idxs = nn.Parameter(torch.tensor(list(idxs), device=static.CUDA), requires_grad=False)
         self.weight = nn.Parameter(self.weight[:, self.in_idxs], requires_grad=True)
         self.init_weight()
 
     def set_out_idxs(self, idxs):
         idxs = set(range(self.shape[0])) - set(idxs)
-        self.out_idxs = nn.Parameter(torch.tensor(list(idxs)), requires_grad=False)
+        self.out_idxs = nn.Parameter(torch.tensor(list(idxs), device=static.CUDA), requires_grad=False)
         self.weight = nn.Parameter(self.weight[self.out_idxs], requires_grad=True)
         self.se = nn.Parameter(self.se[self.out_idxs], requires_grad=True)
         self.init_weight()

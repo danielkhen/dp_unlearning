@@ -85,7 +85,7 @@ def train(model, train_loader, test_loader, criterion, optimizer, weights_path, 
 
 
 # Train model for one epoch
-def train_epoch(model, train_loader, criterion, optimizer):
+def train_epoch(model, train_loader, criterion, optimizer, keep_gradients=False):
     running_loss = 0.0
     correct_predictions = 0
     total_predictions = 0
@@ -109,8 +109,9 @@ def train_epoch(model, train_loader, criterion, optimizer):
         loss.backward()
 
         # Adjust learning weights and zero gradients
-        optimizer.step()
-        optimizer.zero_grad()
+        if not keep_gradients:
+            optimizer.step()
+            optimizer.zero_grad()
 
     # Calculate the average loss and accuracy
     avg_loss = running_loss / len(train_loader)
