@@ -154,7 +154,7 @@ class FreezeWeightParameterization(nn.Module):
         super().__init__()
         self.shape = shape
         self.weight = nn.Parameter(init.kaiming_uniform_(torch.empty(shape)), requires_grad=True)
-        self.se = nn.Parameter(torch.zeros((shape[0]), *([1] * len(shape) - 1)), requires_grad=True)
+        self.se = nn.Parameter(torch.zeros((shape[0]), *([1] * (len(shape) - 1))), requires_grad=True)
         self.init_weight()
         self.set_in_idxs([])
         self.set_out_idxs([])
