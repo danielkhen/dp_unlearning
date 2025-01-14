@@ -150,51 +150,51 @@ def replace_module(model, target, module_cls, freeze=True, args_lambda=lambda _:
 class FreezeWeightParameterization(nn.Module):
     def __init__(self, shape):
         super().__init__()
+        self.shape = shape
         self.weight = nn.Parameter(torch.zeros(shape), requires_grad=True)
-        self.prune_in_mask = torch.ones(shape[1], dtype=torch.bool)
-        self.prune_out_mask = torch.ones(shape[0], dtype=torch.bool)
+        self.set_in_idxs([])
+        self.set_out_idxs([])
 
     def forward(self, X):
         res = X.clone()
 
-        if all(self.prune_in_mask) and all(self.prune_out_mask):
+        if len(self.in_idxs) == self.shape[1] and len(self.out_idxs) == self.shape[0]:
             res += self.weight
         else:
-            print(self.prune_out_mask.unsqueeze(1).shape)
-            print(self.prune_in_mask.unsqueeze(0).shape)
-            print(res.shape)
-            print(self.weight.shape)
-            res[self.prune_out_mask.unsqueeze(1), self.prune_in_mask.unsqueeze(0)] += self.weight
+            res[self.out_idxs.unsqueeze(1), self.in_idxs.unsqueeze(0)] += self.weight
 
         return res
     
     def set_in_idxs(self, idxs):
-        self.prune_in_mask[idxs] = False
-        self.weight = nn.Parameter(self.weight[:, self.prune_in_mask], requires_grad=True)
+        idxs = set(range(self.shape[1])) - set(idxs)
+        self.in_idxs = nn.Parameter(torch.tensor(list(idxs)), requires_grad=False)
+        self.weight = nn.Parameter(self.weight[:, self.in_idxs], requires_grad=True)
 
     def set_out_idxs(self, idxs):
-        self.prune_out_mask[idxs] = False
-        self.weight = nn.Parameter(self.weight[self.prune_out_mask], requires_grad=True)
+        idxs = set(range(self.shape[0])) - set(idxs)
+        self.out_idxs = nn.Parameter(torch.tensor(list(idxs)), requires_grad=False)
+        self.weight = nn.Parameter(self.weight[self.out_idxs], requires_grad=True)
     
 class FreezeBiasParameterization(nn.Module):
     def __init__(self, len):
         super().__init__()
         self.bias = nn.Parameter(torch.zeros(len), requires_grad=True)
-        self.prune_out_mask = torch.ones(len, dtype=torch.bool)
+        self.set_out_idxs([])
 
     def forward(self, X):
         res = X.clone()
 
-        if all(self.prune_out_mask):
+        if len(self.out_idxs) == self.len:
             res += self.bias
         else:
-            res[self.prune_out_mask] += self.bias
+            res[self.out_idxs] += self.bias
 
         return res
     
     def set_out_idxs(self, idxs):
-        self.prune_out_mask[idxs] = False
-        self.bias = nn.Parameter(self.bias[self.prune_out_mask], requires_grad=True)
+        idxs = set(range(self.len)) - set(idxs)
+        self.out_idxs = nn.Parameter(torch.tensor(list(idxs)), requires_grad=False)
+        self.bias = nn.Parameter(self.bias[self.out_idxs], requires_grad=True)
 
 
 class FreezePruner(tp.BasePruningFunc):
