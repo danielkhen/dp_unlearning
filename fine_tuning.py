@@ -87,8 +87,7 @@ def prune(model, target_modules, ignored_layers, importance, global_pruning=Fals
         pruning_ratio_dict=pruning_ratio_dict,
         ignored_layers=ignored_layers,
         global_pruning=global_pruning,
-        num_heads=num_heads,
-        customized_pruners={nn.Conv2d: FreezePruner(), nn.Linear: FreezePruner()}
+        num_heads=num_heads
     )
             
     if freeze:
@@ -153,7 +152,7 @@ class FreezeWeightParameterization(nn.Module):
     def __init__(self, shape):
         super().__init__()
         self.shape = shape
-        self.weight = nn.Parameter(init.kaiming_uniform_(torch.empty(shape, device=static.CUDA)), requires_grad=True)
+        self.weight = nn.Parameter(torch.empty(shape, device=static.CUDA), requires_grad=True)
         self.se = nn.Parameter(torch.zeros((shape[0]), *([1] * (len(shape) - 1)), device=static.CUDA), requires_grad=True)
         self.init_weight()
         self.set_in_idxs([])
@@ -189,8 +188,8 @@ class FreezeBiasParameterization(nn.Module):
     def __init__(self, len):
         super().__init__()
         self.len = len
-        self.bias = nn.Parameter(torch.zeros(len), requires_grad=True)
-        self.se = nn.Parameter(torch.zeros(len), requires_grad=True)
+        self.bias = nn.Parameter(torch.zeros(len, device=static.CUDA), requires_grad=True)
+        self.se = nn.Parameter(torch.zeros(len, device=static.CUDA), requires_grad=True)
         self.set_out_idxs([])
 
     def forward(self, X):
@@ -208,7 +207,7 @@ class FreezeBiasParameterization(nn.Module):
     
     def set_out_idxs(self, idxs):
         idxs = set(range(self.len)) - set(idxs)
-        self.out_idxs = nn.Parameter(torch.tensor(list(idxs)), requires_grad=False)
+        self.out_idxs = nn.Parameter(torch.tensor(list(idxs), device=static.CUDA), requires_grad=False)
         self.bias = nn.Parameter(self.bias[self.out_idxs], requires_grad=True)
         self.se = nn.Parameter(self.se[self.out_idxs], requires_grad=True)
 
@@ -219,7 +218,7 @@ class FreezePruner(tp.BasePruningFunc):
             layer.weight.requires_grad = False
             parametrize.register_parametrization(layer, 'weight', FreezeWeightParameterization(layer.weight.shape))
 
-            if layer.bias:
+            if layer.bias is not None:
                 layer.bias.requires_grad = False
                 parametrize.register_parametrization(layer, 'bias', FreezeBiasParameterization(layer.bias.size(0)))
 
@@ -227,7 +226,7 @@ class FreezePruner(tp.BasePruningFunc):
         self._init_layer(layer)
         layer.parametrizations.weight[0].set_out_idxs(idxs)
 
-        if layer.bias:
+        if layer.bias is not None:
             layer.parametrizations.bias[0].set_out_idxs(idxs)
 
         # if isinstance(layer, nn.Conv2d):
