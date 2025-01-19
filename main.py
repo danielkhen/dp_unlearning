@@ -48,11 +48,12 @@ def main():
                             for module_name, module in named_modules[name].named_modules()
                             if not peft_modules or isinstance(module, peft_modules)]
         
+        model.to(static.CUDA)
+        
         if args.prune_grads:
                     optimizer_class = getattr(optim, args.optimizer)
                     optimizer = optimizer_class(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay, **args.optimizer_kwargs)
                     criterion =  nn.CrossEntropyLoss()
-                    model.to(static.CUDA)
                     trainer.train_epoch(model, train_loader, criterion, optimizer, keep_gradients=True)
         
         match args.peft:
