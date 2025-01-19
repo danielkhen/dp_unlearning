@@ -287,6 +287,8 @@ def prune_weights(target_modules, importance, global_pruning=False):
     if global_pruning:
         pruning_ratio = peft_ratio_to_pruning_ratio(target_modules[0][2], linear=True)
         weight_stack = torch.concat([module.weight.view(-1) for _, module, _ in target_modules])
+        grad_stack = torch.concat([module.weight.grad.view(-1) for _, module, _ in target_modules])
+        weight_stack.grad = grad_stack
         global_mask = mask_func(weight_stack, pruning_ratio)
         stack_idx = 0
 
