@@ -245,12 +245,16 @@ def prune_features(model, target_modules, ignored_layers, importance, global_pru
                 module.num_heads = pruner.num_heads[module.qkv]
                 module.head_dim = module.qkv.out_features // (3 * module.num_heads)
 
+
+
 class FreezeWeight(nn.Module):
     def __init__(self, mask):
         super().__init__()
         self.mask = mask
         shape = mask.shape
         self.weight = nn.Parameter(torch.empty(shape, device=static.CUDA), requires_grad=True)
+        numel = lambda self: mask.sum() #Override numel for 
+        self.weight.numel = numel.__get__(self.weight, nn.Parameter)
         self.se = nn.Parameter(torch.zeros((shape[0]), *([1] * (len(shape) - 1)), device=static.CUDA), requires_grad=True)
         self.init_weight()
 
@@ -260,13 +264,13 @@ class FreezeWeight(nn.Module):
     def init_weight(self):
         init.kaiming_uniform_(self.weight, a=0, mode='fan_in', nonlinearity='relu')
 
-def magnitude_importance(weight, pruning_ratio):
+def gradient_importance(weight, pruning_ratio):
     grad = weight.grad.abs()
     threshold = grad.quantile(pruning_ratio)
 
     return grad >= threshold
 
-def l1_importance(weight, pruning_ratio):
+def magnitude_importance(weight, pruning_ratio):
     weight = weight.abs()
     threshold = weight.quantile(pruning_ratio)
 
@@ -275,10 +279,10 @@ def l1_importance(weight, pruning_ratio):
 
 def prune_weights(target_modules, importance, global_pruning=False):
     match importance:
+        case 'GradientImportance':
+            mask_func = gradient_importance
         case 'MagnitudeImportance':
             mask_func = magnitude_importance
-        case 'L1Importance':
-            mask_func = l1_importance
 
     if global_pruning:
         pruning_ratio = peft_ratio_to_pruning_ratio(target_modules[0][2], linear=True)
