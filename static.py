@@ -7,6 +7,8 @@ from torchvision import transforms
 CPU = torch.device('cpu')
 CUDA = torch.device('cuda')
 
+torch.set_default_device(CUDA)
+
 # Dataset parameters
 DATASET_NAME = 'CIFAR10'
 CLASSES_NUM = 10

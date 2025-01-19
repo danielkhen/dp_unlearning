@@ -48,23 +48,23 @@ def main():
                             for module_name, module in named_modules[name].named_modules()
                             if not peft_modules or isinstance(module, peft_modules)]
         
-        match args.peft:
-            case 'lora':
-                model = fine_tuning.get_lora_model(model, target_modules, lora_alpha=args.lora_alpha, lora_dropout=args.lora_dropout)
-            case 'prune':
-                ignored_layers = [module for name, module in named_modules.items() 
-                                  if name and not any(name == target or name.startswith(target + '.') for target in args.peft_targets)]
-                if args.prune_grads:
+        if args.prune_grads:
                     optimizer_class = getattr(optim, args.optimizer)
                     optimizer = optimizer_class(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay, **args.optimizer_kwargs)
                     criterion =  nn.CrossEntropyLoss()
                     model.to(static.CUDA)
                     trainer.train_epoch(model, train_loader, criterion, optimizer, keep_gradients=True)
+        
+        match args.peft:
+            case 'lora':
+                model = fine_tuning.get_lora_model(model, target_modules, lora_alpha=args.lora_alpha, lora_dropout=args.lora_dropout)
+            case 'prune-features':
+                ignored_layers = [module for name, module in named_modules.items() 
+                                  if name and not any(name == target or name.startswith(target + '.') for target in args.peft_targets)]
 
-                fine_tuning.prune(model, target_modules, ignored_layers, global_pruning=args.global_pruning, importance=args.pruning_importance)
-                
-                if args.prune_grads:
-                    optimizer.zero_grad()
+                fine_tuning.prune_features(model, target_modules, ignored_layers, global_pruning=args.global_pruning, importance=args.pruning_importance)
+            case 'prune-weights':
+                fine_tuning.prune_weights(target_modules, importance=args.pruning_importance, global_pruning=args.global_pruning)
             case 'conv-adapter':
                 for name, _, peft_ratio in target_modules:
                     fine_tuning.replace_module(model, name, modules.ParallelAdapter, args_lambda=lambda m: (m, modules.ConvAdapter),
@@ -89,6 +89,9 @@ def main():
             case 'freeze':
                 for _, module, _ in target_modules:
                     module.weight.requires_grad = False
+
+        if args.prune_grads:
+                optimizer.zero_grad()
 
         print(f"Number of trainable parameters using PEFT method {args.peft}: {sum(param.numel() for param in model.parameters() if param.requires_grad)}")
 
