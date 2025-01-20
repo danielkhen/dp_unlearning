@@ -2,6 +2,7 @@ import modules
 import loader
 import static
 import trainer
+import tester
 import fine_tuning
 import torch
 
@@ -14,12 +15,13 @@ from parser import parser
 def main():
     args = parser.parse_args()
 
-    testset_transform = transforms.Compose(static.NORMALIZATIONS)
-    dataset_transform = transforms.Compose(static.AUGMENTATIONS + static.NORMALIZATIONS) if args.data_augmentation or args.augmentation_multiplicity != 1 else testset_transform
+    if args.test:
+        test_state_dict = torch.load(args.output)
+        args = test_state_dict['args']
+        parser.parse_args([args.model, args.output, '--test'], namespace=args)
+        args.data_augmentation = False
+        print(test_state_dict['loss'], test_state_dict['accuracy'])
 
-    train_loader, test_loader = loader.load_dataset(static.DATASET_NAME, dataset_transform, testset_transform, args.batch_size, args.num_workers, 
-                                                    augmentation_multiplicity=args.augmentation_multiplicity)
-    
     if args.input_weights:
         state_dict = torch.load(args.input_weights)
         model_state_dict = state_dict['model']
@@ -27,8 +29,11 @@ def main():
         if 'loss' in state_dict and 'accuracy' in state_dict:
             print(f"Loading pretrained model with Test loss: {state_dict['loss']}, Test accuracy: {state_dict['accuracy']:.2f}")
 
-    if args.test:
-        return
+    testset_transform = transforms.Compose(static.NORMALIZATIONS)
+    dataset_transform = transforms.Compose(static.AUGMENTATIONS + static.NORMALIZATIONS) if args.data_augmentation or args.augmentation_multiplicity != 1 else testset_transform
+
+    train_loader, test_loader = loader.load_dataset(static.DATASET_NAME, dataset_transform, testset_transform, args.batch_size, args.num_workers, 
+                                                    augmentation_multiplicity=args.augmentation_multiplicity)
 
     model = loader.model_factory(args.model, state_dict=model_state_dict if args.input_weights else None, fix_dp=not args.no_fix_dp, 
                                  pretrained=args.pretrained, fix_dp_kwargs=args.fix_dp_kwargs)
@@ -49,7 +54,7 @@ def main():
                             if not peft_modules or isinstance(module, peft_modules)]
         
         model.to(static.CUDA)
-        
+
         if args.prune_grads:
                     optimizer_class = getattr(optim, args.optimizer)
                     optimizer = optimizer_class(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay, **args.optimizer_kwargs)
@@ -93,12 +98,20 @@ def main():
 
         if args.prune_grads:
                 optimizer.zero_grad()
-
+                
         print(f"Number of trainable parameters using PEFT method {args.peft}: {sum(param.numel() for param in model.parameters() if param.requires_grad)}")
 
     optimizer_class = getattr(optim, args.optimizer)
     optimizer = optimizer_class(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay, **args.optimizer_kwargs)
     criterion =  nn.CrossEntropyLoss()
+
+    if args.test:
+        model.load_state_dict(test_state_dict['model'])
+        model.to(static.CUDA)
+        #print(tester.test(model, test_loader, criterion))
+        print(tester.test(model, train_loader, criterion))
+
+        return
     
     schedulers = []
 
