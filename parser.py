@@ -32,15 +32,17 @@ parser.add_argument('--input-weights', '-i', default=None, type=str, help='path 
 parser.add_argument('--loss-goal', default=0, type=float, help='average loss goal to stop training at')
 parser.add_argument('--augmentation-multiplicity', '--am', default=1, type=int, help='Use multiple augmentations per batch, does not increate batch size')
 parser.add_argument('--weight-standardization', '--ws', action='store_true', help='Replace Conv2D layers that come before normallization layers with weight standardization version')
-
 parser.add_argument('--cosine-anealing', '--ca', action='store_true', help='use learning rate cosine anealing scheduler')
 parser.add_argument('--eta-min', default=0, type=float, help='min learning rate when cosine anealing')
 parser.add_argument('--exponential-moving-average', '--ema', action='store_true', help='use exponential moving average scheduler')
 parser.add_argument('--ema-decay', default=0.9, type=float, help='decay for exponential moving average')
-
 parser.add_argument('--weight-decay', default=0, type=float, help='weight decay used in optimizer')
 parser.add_argument('--num-workers', default=8, type=int, help='number of workers (dataset download)')
 parser.add_argument('--checkpoint-every', default=10, type=int, help='number of epochs to checkpoint the model')
+
+parser.add_argument('--unlearn', '-u', action='store_true', help='wether to unlearn the model')
+parser.add_argument('--forgetset-size', '--fs', default=10000, type=int, help='chooses a random forget set  of this size')
+parser.add_argument('--load-after-peft', action='store_true', help='wether to load pretrained weights after peft')
 
 parser.add_argument('--differential-privacy', '--dp', action='store_true', help='wether to train the model with differential privacy')
 parser.add_argument('--max-physical-batch-size', '--maxbs', default=128, type=int, help='maximum physical batch size for holding grad samples in memory')

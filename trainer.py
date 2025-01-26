@@ -2,6 +2,7 @@ import torch
 import time
 import tester
 import static
+import itertools
 
 from opacus.utils.batch_memory_manager import BatchMemoryManager
 from torch.func import grad_and_value, vmap, functional_call
@@ -9,7 +10,7 @@ from opacus.grad_sample.functorch import make_functional
 
 # Train model
 def train(model, train_loader, test_loader, criterion, optimizer, weights_path, schedulers=[], epochs=200, checkpoint_every=10, state_dict={}, 
-          loss_goal=0, differential_privacy=True, ma_model=None, max_physical_batch_size=128, augmentation_multiplicity=1, grad_sample_mode='no_op'):
+          loss_goal=0, differential_privacy=True, ma_model=None, max_physical_batch_size=128, augmentation_multiplicity=1, grad_sample_mode='no_op', forget_loader=None):
     training_start_time = time.time()
     state_dict['epochs'] = []
     state_dict['checkpoints'] = []
@@ -30,16 +31,29 @@ def train(model, train_loader, test_loader, criterion, optimizer, weights_path, 
                 else:
                     epoch_loss, epoch_accuracy = train_epoch_dp(model, memory_safe_train_loader, criterion, optimizer, augmentation_multiplicity)
         else:
-            epoch_loss, epoch_accuracy = train_epoch(model, train_loader, criterion, optimizer)
+            if forget_loader:
+                epoch_loss, forget_epoch_loss, epoch_accuracy, forget_epoch_accuracy = neg_grad(model, train_loader, forget_loader, criterion, optimizer)
+            else:
+                epoch_loss, epoch_accuracy = train_epoch(model, train_loader, criterion, optimizer)
 
         end_time = time.time()
         print(f"Epoch {epoch} - Train loss: {epoch_loss}, Train accuracy: {epoch_accuracy} , Time: {(end_time - start_time):.2f}s")
 
-        state_dict['epochs'].append({
+        epoch_state = {
             'loss': epoch_loss,
             'accuracy': epoch_accuracy,
-            'time': end_time - start_time,
-        })
+            'time': end_time - start_time
+        }
+
+        if forget_loader:
+            print(f"Epoch {epoch} - Forget train loss: {forget_epoch_loss}, Train accuracy: {forget_epoch_accuracy} , Time: {(end_time - start_time):.2f}s")
+
+            epoch_state |= {
+                'forget_loss': forget_epoch_loss, 
+                'forget_accuracy': forget_epoch_accuracy
+            }
+        
+        state_dict['epochs'].append(epoch_state)
 
         # Stop training if loss achieved goal
         if epoch_loss <= loss_goal:
@@ -56,13 +70,13 @@ def train(model, train_loader, test_loader, criterion, optimizer, weights_path, 
         # Checkpoint model
         if epoch % checkpoint_every == 0:
             # Output model statistics
-            test_avg_loss, test_accuracy = tester.test(checkpoint_model, test_loader, criterion)
+            test_loss, test_accuracy = tester.test(checkpoint_model, test_loader, criterion)
             print(f"Checkpoint model at epoch {epoch} with: \n" +
-                  f"Test loss: {test_avg_loss}, Test accuracy: {test_accuracy:.2f}")
+                  f"Test loss: {test_loss}, Test accuracy: {test_accuracy:.2f}")
 
             state_dict['checkpoints'].append({
                 'epoch': epoch,
-                'loss': test_avg_loss,
+                'loss': test_loss,
                 'accuracy': test_accuracy,
             })
 
@@ -218,3 +232,49 @@ def train_epoch_dp_functorch(model, train_loader, criterion, optimizer, augmenta
     accuracy = 100 * correct_predictions / total_predictions
 
     return avg_loss, accuracy
+
+# NegGrad+ one epoch
+def neg_grad(model, retain_loader, forget_loader, criterion, optimizer):
+    retain_running_loss, forget_running_loss = 0.0, 0.0
+    retain_correct_predictions, forget_correct_predictions = 0, 0
+    retain_total_predictions, forget_total_predictions = 0, 0
+    model.train() # Set the model to training mode
+
+    loader = zip(retain_loader, itertools.cycle(forget_loader))
+
+    for (retain_inputs, retain_labels), (forget_inputs, forget_labels) in zip(retain_loader, forget_loader):
+        # Move inputs and labels to the specified device
+        retain_inputs, retain_labels = retain_inputs.to(static.CUDA), retain_labels.to(static.CUDA)
+        forget_inputs, forget_labels = forget_inputs.to(static.CUDA), forget_labels.to(static.CUDA)
+
+        # Compute predictions
+        retain_outputs = model(retain_inputs)
+        forget_outputs = model(forget_inputs)
+        _, retain_predictions = torch.max(retain_outputs.data, 1)
+        _, forget_predictions = torch.max(forget_outputs.data, 1)
+
+        # Update the running total of correct predictions and samples
+        retain_correct_predictions += (retain_predictions == retain_labels).sum().item()
+        forget_correct_predictions += (forget_predictions == forget_labels).sum().item()
+        retain_total_predictions += retain_labels.size(0)
+        forget_total_predictions += forget_labels.size(0)
+
+        # Compute the loss and its gradients
+        retain_loss = criterion(retain_outputs, retain_labels)
+        forget_loss = criterion(forget_outputs, forget_labels)
+        retain_running_loss += retain_loss.item()
+        forget_running_loss += forget_loss.item()
+        retain_loss.backward()
+        forget_loss.backward()
+
+        # Adjust learning weights and zero gradients
+        optimizer.step()
+        optimizer.zero_grad()
+
+    # Calculate the average loss and accuracy
+    retain_avg_loss = retain_running_loss / len(retain_loader)
+    forget_avg_loss = forget_running_loss / len(retain_loader)
+    retain_accuracy = 100 * retain_correct_predictions / retain_total_predictions
+    forget_accuracy = 100 * forget_correct_predictions / forget_total_predictions
+
+    return retain_avg_loss, forget_avg_loss, retain_accuracy, forget_accuracy

@@ -4,6 +4,8 @@ warnings.simplefilter("ignore")
 import torch
 from torchvision import transforms
 
+torch.manual_seed(69)
+
 CPU = torch.device('cpu')
 CUDA = torch.device('cuda')
 

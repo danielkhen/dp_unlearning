@@ -13,7 +13,7 @@ The models were all trained on the CIFAR10 dataset, first normally, then with di
 The following table shows the accuracies achieved with the different methods tried:
 
 ### Resnet18
-| Method | Parameters | Train accuracy | Test accuracy |
+| Method | Parameters | Test accuracy | Train accuracy |
 |---|---|---|---|
 | Normal | 11.2M | 89.76 | 98.94 |
 | DP | 11.2M | 68.13 | 68.91 |
@@ -22,7 +22,7 @@ The following table shows the accuracies achieved with the different methods tri
 | Channel Pruning | 1.4M | 85.73 | 91.93 |
 
 ### ViT-Tiny
-| Method | Parameters | Train accuracy | Test accuracy |
+| Method | Parameters | Test accuracy | Train accuracy |
 |---|---|---|---|
 | Normal | 5.6M | 86.01 | 93.66 |
 | DP | 5.6M | 60.24 | 61.04 |

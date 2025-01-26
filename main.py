@@ -15,12 +15,14 @@ from parser import parser
 def main():
     args = parser.parse_args()
 
-    if args.test:
-        test_state_dict = torch.load(args.output)
-        args = test_state_dict['args']
+    if args.load_after_peft:
+        input_state_dict = torch.load(args.input_weights)
+        main_args = args
+        args = input_state_dict['args']
         parser.parse_args([args.model, args.output, '--test'], namespace=args)
+        
+    if args.test:
         args.data_augmentation = False
-        print(test_state_dict['loss'], test_state_dict['accuracy'])
 
     if args.input_weights:
         state_dict = torch.load(args.input_weights)
@@ -32,8 +34,8 @@ def main():
     testset_transform = transforms.Compose(static.NORMALIZATIONS)
     dataset_transform = transforms.Compose(static.AUGMENTATIONS + static.NORMALIZATIONS) if args.data_augmentation or args.augmentation_multiplicity != 1 else testset_transform
 
-    train_loader, test_loader = loader.load_dataset(static.DATASET_NAME, dataset_transform, testset_transform, args.batch_size, args.num_workers, 
-                                                    augmentation_multiplicity=args.augmentation_multiplicity)
+    train_loader, forget_loader, test_loader = loader.load_dataset(static.DATASET_NAME, dataset_transform, testset_transform, args.batch_size, args.num_workers, 
+                                                                    augmentation_multiplicity=args.augmentation_multiplicity, unlearning=args.unlearn, forgetset_size=args.forgetset_size)
 
     model = loader.model_factory(args.model, state_dict=model_state_dict if args.input_weights else None, fix_dp=not args.no_fix_dp, 
                                  pretrained=args.pretrained, fix_dp_kwargs=args.fix_dp_kwargs)
@@ -56,10 +58,10 @@ def main():
         model.to(static.CUDA)
 
         if args.prune_grads:
-                    optimizer_class = getattr(optim, args.optimizer)
-                    optimizer = optimizer_class(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay, **args.optimizer_kwargs)
-                    criterion =  nn.CrossEntropyLoss()
-                    trainer.train_epoch(model, train_loader, criterion, optimizer, keep_gradients=True)
+            optimizer_class = getattr(optim, args.optimizer)
+            optimizer = optimizer_class(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay, **args.optimizer_kwargs)
+            criterion =  nn.CrossEntropyLoss()
+            trainer.train_epoch(model, train_loader, criterion, optimizer, keep_gradients=True)
         
         match args.peft:
             case 'lora':
@@ -104,12 +106,18 @@ def main():
     optimizer_class = getattr(optim, args.optimizer)
     optimizer = optimizer_class(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay, **args.optimizer_kwargs)
     criterion =  nn.CrossEntropyLoss()
+    
+    if args.load_after_peft:
+        model.load_state_dict(input_state_dict['model'])
+        model.to(static.CUDA)
+        args = main_args
 
     if args.test:
-        model.load_state_dict(test_state_dict['model'])
-        model.to(static.CUDA)
-        #print(tester.test(model, test_loader, criterion))
+        print(tester.test(model, test_loader, criterion))
         print(tester.test(model, train_loader, criterion))
+        
+        if args.unlearn:
+            print(tester.test(model, forget_loader, criterion))
 
         return
     
@@ -148,7 +156,7 @@ def main():
     trainer.train(model, train_loader, test_loader, criterion, optimizer, args.output, schedulers=schedulers, epochs=args.epochs, 
                 checkpoint_every=args.checkpoint_every, state_dict=starting_state_dict, differential_privacy=args.differential_privacy, 
                 loss_goal=args.loss_goal, ma_model=ema_model if args.exponential_moving_average else None, max_physical_batch_size=args.max_physical_batch_size,
-                augmentation_multiplicity=args.augmentation_multiplicity, grad_sample_mode=args.grad_sample_mode)
+                augmentation_multiplicity=args.augmentation_multiplicity, grad_sample_mode=args.grad_sample_mode, forget_loader=forget_loader)
 
 if __name__ == "__main__":
     main()

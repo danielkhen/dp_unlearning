@@ -25,21 +25,22 @@ class MultiplicitySampler(Sampler):
         return self.samples_count * self.augmentation_multiplicity
     
 
-def load_dataset(dataset, dataset_transform, testset_transform, batch_size, num_workers, augmentation_multiplicity=1):
+def load_dataset(dataset, dataset_transform, testset_transform, batch_size, num_workers, augmentation_multiplicity=1, unlearning=False, forgetset_size=10000):
     dataset = getattr(datasets, dataset)
 
     # Download dataset if not already downloaded
     trainset = dataset(root='./data', train=True, download=True, transform=dataset_transform)
     testset = dataset(root='./data', train=False, download=True, transform=testset_transform)
-
-    # Random sampler for augmentation multiplicity
-    sampler = MultiplicitySampler(trainset, augmentation_multiplicity)
+    
+    if unlearning:
+        trainset, forgetset = torch.utils.data.random_split(trainset, (len(trainset) - forgetset_size, forgetset_size))
 
     # Load dataset
-    trainloader = DataLoader(trainset, batch_size=batch_size, num_workers=num_workers, sampler=sampler)
+    trainloader = DataLoader(trainset, batch_size=batch_size, num_workers=num_workers, sampler=MultiplicitySampler(trainset, augmentation_multiplicity))
+    forgetloader = DataLoader(forgetset, batch_size=batch_size, num_workers=num_workers, shuffle=MultiplicitySampler(forgetset, augmentation_multiplicity)) if unlearning else None
     testloader = DataLoader(testset, batch_size=batch_size, num_workers=num_workers, shuffle=False)
 
-    return trainloader, testloader
+    return trainloader, forgetloader, testloader
 
 def model_factory(model_name, state_dict=None, fix_dp=True, pretrained=False, fix_dp_kwargs={}):
     match model_name:
