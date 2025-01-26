@@ -19,7 +19,6 @@ def main():
         input_state_dict = torch.load(args.input_weights)
         main_args = args
         args = input_state_dict['args']
-        parser.parse_args([args.model, args.output, '--test'], namespace=args)
         
     if args.test:
         args.data_augmentation = False
