@@ -12,31 +12,14 @@ from torch.optim.swa_utils import AveragedModel, get_ema_multi_avg_fn
 from opacus import PrivacyEngine
 from parser import parser
 
-def main():
-    args = parser.parse_args()
-
-    if args.load_after_peft:
-        input_state_dict = torch.load(args.input_weights)
-        main_args = args
-        args = input_state_dict['args']
-        
-    if args.test:
-        args.data_augmentation = False
-
+def load_model(args):
     if args.input_weights:
         state_dict = torch.load(args.input_weights)
-        model_state_dict = state_dict['model']
         
         if 'loss' in state_dict and 'accuracy' in state_dict:
             print(f"Loading pretrained model with Test loss: {state_dict['loss']}, Test accuracy: {state_dict['accuracy']:.2f}")
 
-    testset_transform = transforms.Compose(static.NORMALIZATIONS)
-    dataset_transform = transforms.Compose(static.AUGMENTATIONS + static.NORMALIZATIONS) if args.data_augmentation or args.augmentation_multiplicity != 1 else testset_transform
-
-    train_loader, forget_loader, test_loader = loader.load_dataset(static.DATASET_NAME, dataset_transform, testset_transform, args.batch_size, args.num_workers, 
-                                                                    augmentation_multiplicity=args.augmentation_multiplicity, unlearning=args.unlearn, forgetset_size=args.forgetset_size)
-
-    model = loader.model_factory(args.model, state_dict=model_state_dict if args.input_weights else None, fix_dp=not args.no_fix_dp, 
+    model = loader.model_factory(args.model, state_dict=state_dict['model'] if args.input_weights else None, fix_dp=not args.no_fix_dp, 
                                  pretrained=args.pretrained, fix_dp_kwargs=args.fix_dp_kwargs)
 
     if args.weight_standardization:
@@ -54,13 +37,13 @@ def main():
                             for module_name, module in named_modules[name].named_modules()
                             if not peft_modules or isinstance(module, peft_modules)]
         
-        model.to(static.CUDA)
+        #model.to(static.CUDA)
 
-        if args.prune_grads:
-            optimizer_class = getattr(optim, args.optimizer)
-            optimizer = optimizer_class(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay, **args.optimizer_kwargs)
-            criterion =  nn.CrossEntropyLoss()
-            trainer.train_epoch(model, train_loader, criterion, optimizer, keep_gradients=True)
+        # if args.prune_grads:
+        #     optimizer_class = getattr(optim, args.optimizer)
+        #     optimizer = optimizer_class(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay, **args.optimizer_kwargs)
+        #     criterion =  nn.CrossEntropyLoss()
+        #     trainer.train_epoch(model, train_loader, criterion, optimizer, keep_gradients=True)
         
         match args.peft:
             case 'lora':
@@ -97,10 +80,25 @@ def main():
                 for _, module, _ in target_modules:
                     module.weight.requires_grad = False
 
-        if args.prune_grads:
-                optimizer.zero_grad()
+        # if args.prune_grads:
+        #         optimizer.zero_grad()
                 
         print(f"Number of trainable parameters using PEFT method {args.peft}: {sum(param.numel() for param in model.parameters() if param.requires_grad)}")
+
+def main():
+    args = parser.parse_args()
+
+    if args.load_after_peft:
+        input_state_dict = torch.load(args.input_weights)
+        input_args = input_state_dict['args']
+
+    load_model(input_args if args.load_after_peft else args)
+
+    testset_transform = transforms.Compose(static.NORMALIZATIONS)
+    dataset_transform = transforms.Compose(static.AUGMENTATIONS + static.NORMALIZATIONS) if args.data_augmentation or args.augmentation_multiplicity != 1 else testset_transform
+
+    train_loader, forget_loader, test_loader = loader.load_dataset(static.DATASET_NAME, dataset_transform, testset_transform, args.batch_size, args.num_workers, 
+                                                                    augmentation_multiplicity=args.augmentation_multiplicity, unlearning=args.unlearn, forgetset_size=args.forgetset_size)
 
     optimizer_class = getattr(optim, args.optimizer)
     optimizer = optimizer_class(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay, **args.optimizer_kwargs)
@@ -109,7 +107,6 @@ def main():
     if args.load_after_peft:
         model.load_state_dict(input_state_dict['model'])
         model.to(static.CUDA)
-        args = main_args
 
     if args.test:
         print(tester.test(model, test_loader, criterion))
@@ -146,7 +143,7 @@ def main():
     starting_state_dict={
         'args': args,
         'trained_on': {
-            'args': state_dict['args'],
+            'args': torch.load(args.input_weights)['args'],
             'input_weights': args.input_weights
         } if args.input_weights else None
     }
