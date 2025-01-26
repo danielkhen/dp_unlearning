@@ -261,11 +261,11 @@ def neg_grad(model, retain_loader, forget_loader, criterion, optimizer):
 
         # Compute the loss and its gradients
         retain_loss = criterion(retain_outputs, retain_labels)
-        forget_loss = -1.0 * criterion(forget_outputs, forget_labels)
+        forget_loss = criterion(forget_outputs, forget_labels)
         retain_running_loss += retain_loss.item()
         forget_running_loss += forget_loss.item()
         retain_loss.backward()
-        forget_loss.backward()
+        (-1.0 * forget_loss).backward()
 
         # Adjust learning weights and zero gradients
         optimizer.step()
