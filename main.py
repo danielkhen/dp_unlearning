@@ -85,6 +85,8 @@ def load_model(args):
                 
         print(f"Number of trainable parameters using PEFT method {args.peft}: {sum(param.numel() for param in model.parameters() if param.requires_grad)}")
 
+    return model
+
 def main():
     args = parser.parse_args()
 
@@ -92,7 +94,7 @@ def main():
         input_state_dict = torch.load(args.input_weights)
         input_args = input_state_dict['args']
 
-    load_model(input_args if args.load_after_peft else args)
+    model = load_model(input_args if args.load_after_peft else args)
 
     testset_transform = transforms.Compose(static.NORMALIZATIONS)
     dataset_transform = transforms.Compose(static.AUGMENTATIONS + static.NORMALIZATIONS) if args.data_augmentation or args.augmentation_multiplicity != 1 else testset_transform
