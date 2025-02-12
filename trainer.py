@@ -9,8 +9,8 @@ from torch.func import grad_and_value, vmap, functional_call
 from opacus.grad_sample.functorch import make_functional
 
 # Train model
-def train(model, train_loader, test_loader, criterion, optimizer, weights_path, schedulers=[], epochs=200, checkpoint_every=10, state_dict={}, 
-          loss_goal=0, differential_privacy=True, ma_model=None, max_physical_batch_size=128, augmentation_multiplicity=1, grad_sample_mode='no_op', forget_loader=None):
+def train(model, train_loader, test_loader, criterion, optimizer, weights_path, schedulers=[], epochs=200, checkpoint_every=10, state_dict={}, accumulation_steps=0,
+          loss_goal=0, differential_privacy=None, ma_model=None, max_physical_batch_size=128, augmentation_multiplicity=1, grad_sample_mode='no_op', forget_loader=None):
     training_start_time = time.time()
     state_dict['epochs'] = []
     state_dict['checkpoints'] = []
@@ -19,22 +19,24 @@ def train(model, train_loader, test_loader, criterion, optimizer, weights_path, 
     for epoch in range(1, epochs + 1):
         # Train for one epoch and calculate the average loss
         start_time = time.time()
-
-        if differential_privacy:
-            with BatchMemoryManager(
-                data_loader=train_loader, 
-                max_physical_batch_size=max_physical_batch_size, 
-                optimizer=optimizer
-            ) as memory_safe_train_loader:
-                if grad_sample_mode == 'no_op':
-                    epoch_loss, epoch_accuracy = train_epoch_dp_functorch(model, memory_safe_train_loader, criterion, optimizer, augmentation_multiplicity)
+        match differential_privacy:
+            case 'opacus':
+                with BatchMemoryManager(
+                    data_loader=train_loader, 
+                    max_physical_batch_size=max_physical_batch_size, 
+                    optimizer=optimizer
+                ) as memory_safe_train_loader:
+                    if grad_sample_mode == 'no_op':
+                        epoch_loss, epoch_accuracy = train_epoch_dp_functorch(model, memory_safe_train_loader, criterion, optimizer, augmentation_multiplicity)
+                    else:
+                        epoch_loss, epoch_accuracy = train_epoch_dp(model, memory_safe_train_loader, criterion, optimizer, augmentation_multiplicity)
+            case 'fast-dp':
+                epoch_loss, epoch_accuracy = train_epoch(model, train_loader, criterion, optimizer, accumulation_steps=accumulation_steps)
+            case _:
+                if forget_loader:
+                    epoch_loss, forget_epoch_loss, epoch_accuracy, forget_epoch_accuracy = neg_grad(model, train_loader, forget_loader, criterion, optimizer)
                 else:
-                    epoch_loss, epoch_accuracy = train_epoch_dp(model, memory_safe_train_loader, criterion, optimizer, augmentation_multiplicity)
-        else:
-            if forget_loader:
-                epoch_loss, forget_epoch_loss, epoch_accuracy, forget_epoch_accuracy = neg_grad(model, train_loader, forget_loader, criterion, optimizer)
-            else:
-                epoch_loss, epoch_accuracy = train_epoch(model, train_loader, criterion, optimizer)
+                    epoch_loss, epoch_accuracy = train_epoch(model, train_loader, criterion, optimizer, accumulation_steps=accumulation_steps)
 
         end_time = time.time()
         print(f"Epoch {epoch} - Train loss: {epoch_loss}, Train accuracy: {epoch_accuracy} , Time: {(end_time - start_time):.2f}s")
@@ -99,13 +101,13 @@ def train(model, train_loader, test_loader, criterion, optimizer, weights_path, 
 
 
 # Train model for one epoch
-def train_epoch(model, train_loader, criterion, optimizer, keep_gradients=False):
+def train_epoch(model, train_loader, criterion, optimizer, keep_gradients=False, accumulation_steps=0):
     running_loss = 0.0
     correct_predictions = 0
     total_predictions = 0
     model.train() # Set the model to training mode
 
-    for inputs, labels in train_loader:
+    for idx, (inputs, labels) in enumerate(train_loader):
         # Move inputs and labels to the specified device
         inputs, labels = inputs.to(static.CUDA), labels.to(static.CUDA)
 
@@ -123,7 +125,7 @@ def train_epoch(model, train_loader, criterion, optimizer, keep_gradients=False)
         loss.backward()
 
         # Adjust learning weights and zero gradients
-        if not keep_gradients:
+        if not keep_gradients or (idx + 1) % accumulation_steps == 0:
             optimizer.step()
             optimizer.zero_grad()
 

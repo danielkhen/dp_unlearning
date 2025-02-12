@@ -5,11 +5,12 @@ import trainer
 import tester
 import fine_tuning
 import torch
+import opacus
+import fastDP
 
 from torch import nn, optim
 from torchvision import transforms
 from torch.optim.swa_utils import AveragedModel, get_ema_multi_avg_fn
-from opacus import PrivacyEngine
 from parser import parser
 
 def load_model(args):
@@ -127,20 +128,33 @@ def main():
     if args.exponential_moving_average:
         ema_model = AveragedModel(model, multi_avg_fn=get_ema_multi_avg_fn(args.ema_decay), use_buffers=True, device=static.CUDA)
 
-    if args.differential_privacy:
-        privacy_engine = PrivacyEngine()
+    match args.differential_privacy:
+        case 'opacus':
+            privacy_engine = opacus.PrivacyEngine()
 
-        model, optimizer, train_loader = privacy_engine.make_private_with_epsilon(
-            module=model,
-            optimizer=optimizer,
-            data_loader=train_loader,
-            epochs=args.epochs,
-            target_epsilon=args.epsilon,
-            target_delta=args.delta,
-            max_grad_norm=args.max_grad_norm,
-            grad_sample_mode=args.grad_sample_mode,
-            poisson_sampling=False # Must be false so incomplete batches wouldn't be counted
-        )
+            model, optimizer, train_loader = privacy_engine.make_private_with_epsilon(
+                module=model,
+                optimizer=optimizer,
+                data_loader=train_loader,
+                epochs=args.epochs,
+                target_epsilon=args.epsilon,
+                target_delta=args.delta,
+                max_grad_norm=args.max_grad_norm,
+                grad_sample_mode=args.grad_sample_mode,
+                poisson_sampling=False # Must be false so incomplete batches wouldn't be counted
+            )
+        case 'fast-dp':
+            privacy_engine = fastDP.PrivacyEngine(
+                model,
+                batch_size=args.batch_size,
+                sample_size=static.DATASET_SIZE,
+                target_epsilon=args.epsilon,
+                epochs=args.epochs,
+                target_delta=args.delta,
+                max_grad_norm=args.max_grad_norm
+            )
+
+            privacy_engine.attach(optimizer)  
 
     starting_state_dict={
         'args': args,
@@ -152,7 +166,7 @@ def main():
 
     model.to(static.CUDA)
     trainer.train(model, train_loader, test_loader, criterion, optimizer, args.output, schedulers=schedulers, epochs=args.epochs, 
-                checkpoint_every=args.checkpoint_every, state_dict=starting_state_dict, differential_privacy=args.differential_privacy, 
+                checkpoint_every=args.checkpoint_every, state_dict=starting_state_dict, differential_privacy=args.differential_privacy, accumulation_steps=args.accumulation_steps,
                 loss_goal=args.loss_goal, ma_model=ema_model if args.exponential_moving_average else None, max_physical_batch_size=args.max_physical_batch_size,
                 augmentation_multiplicity=args.augmentation_multiplicity, grad_sample_mode=args.grad_sample_mode, forget_loader=forget_loader)
 

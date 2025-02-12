@@ -39,12 +39,13 @@ parser.add_argument('--ema-decay', default=0.9, type=float, help='decay for expo
 parser.add_argument('--weight-decay', default=0, type=float, help='weight decay used in optimizer')
 parser.add_argument('--num-workers', default=8, type=int, help='number of workers (dataset download)')
 parser.add_argument('--checkpoint-every', default=10, type=int, help='number of epochs to checkpoint the model')
+parser.add_argument('--accumulation-steps', default=0, type=int, help='number of steps to accumulate gradients over')
 
 parser.add_argument('--unlearn', '-u', action='store_true', help='wether to unlearn the model')
 parser.add_argument('--forgetset-size', '--fs', default=10000, type=int, help='chooses a random forget set  of this size')
 parser.add_argument('--load-after-peft', action='store_true', help='wether to load pretrained weights after peft')
 
-parser.add_argument('--differential-privacy', '--dp', action='store_true', help='wether to train the model with differential privacy')
+parser.add_argument('--differential-privacy', '--dp', default=None, type=str, choices=('opcaus', 'fast-dp'), help='wether to train the model with differential privacy')
 parser.add_argument('--max-physical-batch-size', '--maxbs', default=128, type=int, help='maximum physical batch size for holding grad samples in memory')
 parser.add_argument('--epsilon', default=8.0, type=float, help='epsilon for differential privacy')
 parser.add_argument('--delta', default=1e-5, type=float, help='delta for differential privacy')
