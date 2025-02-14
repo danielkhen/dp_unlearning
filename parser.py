@@ -39,7 +39,7 @@ parser.add_argument('--ema-decay', default=0.9, type=float, help='decay for expo
 parser.add_argument('--weight-decay', default=0, type=float, help='weight decay used in optimizer')
 parser.add_argument('--num-workers', default=8, type=int, help='number of workers (dataset download)')
 parser.add_argument('--checkpoint-every', default=10, type=int, help='number of epochs to checkpoint the model')
-parser.add_argument('--accumulation-steps', default=0, type=int, help='number of steps to accumulate gradients over')
+parser.add_argument('--accumulation-steps', default=1, type=int, help='number of steps to accumulate gradients over')
 
 parser.add_argument('--unlearn', '-u', action='store_true', help='wether to unlearn the model')
 parser.add_argument('--forgetset-size', '--fs', default=10000, type=int, help='chooses a random forget set  of this size')

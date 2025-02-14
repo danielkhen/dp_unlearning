@@ -9,7 +9,7 @@ from torch.func import grad_and_value, vmap, functional_call
 from opacus.grad_sample.functorch import make_functional
 
 # Train model
-def train(model, train_loader, test_loader, criterion, optimizer, weights_path, schedulers=[], epochs=200, checkpoint_every=10, state_dict={}, accumulation_steps=0,
+def train(model, train_loader, test_loader, criterion, optimizer, weights_path, schedulers=[], epochs=200, checkpoint_every=10, state_dict={}, accumulation_steps=1,
           loss_goal=0, differential_privacy=None, ma_model=None, max_physical_batch_size=128, augmentation_multiplicity=1, grad_sample_mode='no_op', forget_loader=None):
     training_start_time = time.time()
     state_dict['epochs'] = []
@@ -101,7 +101,7 @@ def train(model, train_loader, test_loader, criterion, optimizer, weights_path, 
 
 
 # Train model for one epoch
-def train_epoch(model, train_loader, criterion, optimizer, keep_gradients=False, accumulation_steps=0):
+def train_epoch(model, train_loader, criterion, optimizer, keep_gradients=False, accumulation_steps=1):
     running_loss = 0.0
     correct_predictions = 0
     total_predictions = 0
@@ -125,7 +125,7 @@ def train_epoch(model, train_loader, criterion, optimizer, keep_gradients=False,
         loss.backward()
 
         # Adjust learning weights and zero gradients
-        if not keep_gradients or (idx + 1) % accumulation_steps == 0:
+        if not keep_gradients and ((idx + 1) % accumulation_steps == 0 or idx == len(train_loader) - 1) :
             optimizer.step()
             optimizer.zero_grad()
 
