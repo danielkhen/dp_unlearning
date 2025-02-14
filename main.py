@@ -20,8 +20,8 @@ def load_model(args):
         if 'loss' in state_dict and 'accuracy' in state_dict:
             print(f"Loading pretrained model with Test loss: {state_dict['loss']}, Test accuracy: {state_dict['accuracy']:.2f}")
 
-    model = loader.model_factory(args.model, state_dict=state_dict['model'] if args.input_weights else None, fix_dp=not args.no_fix_dp, 
-                                 pretrained=args.pretrained, fix_dp_kwargs=args.fix_dp_kwargs)
+    model = loader.model_factory(args.model, state_dict=state_dict['model'] if args.input_weights else None, differential_privacy=args.differential_privacy, 
+                                 pretrained=args.pretrained)
 
     if args.weight_standardization:
         modules.standardize_model(model)

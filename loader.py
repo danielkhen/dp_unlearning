@@ -42,7 +42,7 @@ def load_dataset(dataset, dataset_transform, testset_transform, batch_size, num_
 
     return trainloader, forgetloader, testloader
 
-def model_factory(model_name, state_dict=None, fix_dp=True, pretrained=False, fix_dp_kwargs={}):
+def model_factory(model_name, state_dict=None, differential_privacy=None, pretrained=False):
     match model_name:
         case 'vit-tiny':
             model = VisionTransformer(
@@ -95,8 +95,8 @@ def model_factory(model_name, state_dict=None, fix_dp=True, pretrained=False, fi
         state_dict.update(timm_state_dict)
         model.load_state_dict(state_dict)
 
-    if fix_dp:
-        model = ModuleValidator.fix(model, **fix_dp_kwargs)
+    if differential_privacy == 'opacus':
+        model = ModuleValidator.fix(model)
 
     if state_dict:
         model.load_state_dict(state_dict)
