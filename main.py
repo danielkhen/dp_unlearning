@@ -15,7 +15,7 @@ from parser import parser
 
 def load_model(args):
     if args.input_weights:
-        state_dict = torch.load(args.input_weights)
+        state_dict = torch.load(args.input_weights, weights_only=False)
         
         if 'loss' in state_dict and 'accuracy' in state_dict:
             print(f"Loading pretrained model with Test loss: {state_dict['loss']}, Test accuracy: {state_dict['accuracy']:.2f}")
@@ -92,7 +92,7 @@ def main():
     args = parser.parse_args()
 
     if args.load_after_peft:
-        input_state_dict = torch.load(args.input_weights)
+        input_state_dict = torch.load(args.input_weights, weights_only=False)
         input_args = input_state_dict['args']
 
     model = load_model(input_args if args.load_after_peft else args)
@@ -159,7 +159,7 @@ def main():
     starting_state_dict={
         'args': args,
         'trained_on': {
-            'args': torch.load(args.input_weights)['args'],
+            'args': torch.load(args.input_weights, weights_only=False)['args'],
             'input_weights': args.input_weights
         } if args.input_weights else None
     }
