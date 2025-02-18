@@ -19,11 +19,14 @@ The following table shows the accuracies achieved with the different methods tri
 | DP | 11.2M | 68.13 | 68.91 |
 | Conv Adapter | 1.7M | 88.09 | 95.26 |
 | LoRa | 1.5M | 85.95 | 92.15 |
-| Channel Pruning | 1.4M | 85.73 | 91.93 |
+| Channel Pruning | 1.4M | 85.73  | 91.93 |
 
 ### ViT-Tiny
-| Method | Parameters | Test accuracy | Train accuracy |
-|---|---|---|---|
-| Normal | 5.6M | 86.01 | 93.66 |
-| DP | 5.6M | 60.24 | 61.04 |
-| LoRa | 0.7M | 85.63 | 92.15 |
+| Method | Trained on | Parameters | Test accuracy | Train accuracy |
+|---|---|---|---|---|
+| Normal | X | 5.6M | 88.02 | 99.97 |
+| DP | X | 5.6M | 47.42 | 48.90 |
+| LoRa (Rank=16) | X | 0.6M | 87.73 | 95.13 |
+| LoRa (Rank=8) | DP | 0.3M | 84.91 | 90.66 |
+| LoRa (Rank=16) | DP | 0.6M | 87.55 | 95.76 |
+| LoRa (Rank=32) | DP | 1.2M | 88.23 | 96.83 |
