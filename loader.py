@@ -96,7 +96,7 @@ def model_factory(model_name, state_dict=None, differential_privacy=None, pretra
         model.load_state_dict(state_dict)
 
     if differential_privacy == 'opacus':
-        model = ModuleValidator.fix(model)
+        model = ModuleValidator.fix(model, weights_only=False)
 
     if state_dict:
         model.load_state_dict(state_dict)
