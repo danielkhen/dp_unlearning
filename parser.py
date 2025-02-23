@@ -45,7 +45,7 @@ parser.add_argument('--unlearn', '-u', action='store_true', help='wether to unle
 parser.add_argument('--forgetset-size', '--fs', default=10000, type=int, help='chooses a random forget set  of this size')
 parser.add_argument('--load-after-peft', action='store_true', help='wether to load pretrained weights after peft')
 
-parser.add_argument('--differential-privacy', '--dp', default=None, type=str, choices=('opcaus', 'fast-dp'), help='wether to train the model with differential privacy')
+parser.add_argument('--differential-privacy', '--dp', default=None, type=str, choices=('opacus', 'fast-dp'), help='wether to train the model with differential privacy')
 parser.add_argument('--max-physical-batch-size', '--maxbs', default=128, type=int, help='maximum physical batch size for holding grad samples in memory')
 parser.add_argument('--epsilon', default=8.0, type=float, help='epsilon for differential privacy')
 parser.add_argument('--delta', default=1e-5, type=float, help='delta for differential privacy')
