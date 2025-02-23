@@ -14,7 +14,6 @@ def train(model, train_loader, test_loader, criterion, optimizer, weights_path, 
     training_start_time = time.time()
     state_dict['epochs'] = []
     state_dict['checkpoints'] = []
-    checkpoint_model = ma_model.module if ma_model else model
 
     for epoch in range(1, epochs + 1):
         # Train for one epoch and calculate the average loss
@@ -72,7 +71,7 @@ def train(model, train_loader, test_loader, criterion, optimizer, weights_path, 
         # Checkpoint model
         if epoch % checkpoint_every == 0:
             # Output model statistics
-            test_loss, test_accuracy = tester.test(checkpoint_model, test_loader, criterion)
+            test_loss, test_accuracy = tester.test(model, test_loader, criterion)
             print(f"Checkpoint model at epoch {epoch} with: \n" +
                   f"Test loss: {test_loss}, Test accuracy: {test_accuracy:.2f}")
 
@@ -83,10 +82,13 @@ def train(model, train_loader, test_loader, criterion, optimizer, weights_path, 
             })
 
             # Save model weights
-            torch.save(state_dict | {'model': checkpoint_model.state_dict()}, weights_path + '.checkpoint') # Merge state dict so it doesn't sit on memory
+            torch.save(state_dict | {'model': model.state_dict()}, weights_path + '.checkpoint') # Merge state dict so it doesn't sit on memory
+
+            if ma_model:
+                torch.save(state_dict | {'model': ma_model.state_dict()}, weights_path + '.ma.checkpoint')
 
     # Output model statistics
-    test_avg_loss, test_accuracy = tester.test(checkpoint_model, test_loader, criterion)
+    test_avg_loss, test_accuracy = tester.test(model, test_loader, criterion)
     training_end_time = time.time()
     print(f"Training finished in {training_end_time - training_start_time} seconds: \n" +
           f"Test loss: {test_avg_loss}, Test accuracy: {test_accuracy:.2f}")
@@ -94,10 +96,12 @@ def train(model, train_loader, test_loader, criterion, optimizer, weights_path, 
     state_dict['time'] = training_end_time - training_start_time
     state_dict['loss'] = test_avg_loss
     state_dict['accuracy'] = test_accuracy
-    state_dict['model'] = checkpoint_model.state_dict()
     
     # Save model weightsmodel
-    torch.save(state_dict, weights_path)
+    torch.save(state_dict | {'model': model.state_dict()}, weights_path)
+
+    if ma_model:
+        torch.save(state_dict | {'model': ma_model.state_dict()}, weights_path + '.ma')
 
 
 # Train model for one epoch
