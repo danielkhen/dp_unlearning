@@ -151,7 +151,8 @@ def main():
                 target_epsilon=args.epsilon,
                 epochs=args.epochs,
                 target_delta=args.delta,
-                max_grad_norm=args.max_grad_norm
+                max_grad_norm=args.max_grad_norm,
+                origin_params=['patch_embed.proj.bias']
             )
 
             privacy_engine.attach(optimizer)  
