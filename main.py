@@ -13,6 +13,8 @@ from torchvision import transforms
 from torch.optim.swa_utils import AveragedModel, get_ema_multi_avg_fn
 from parser import parser
 
+args = parser.parse_args()
+
 def load_model(args):
     if args.input_weights:
         state_dict = torch.load(args.input_weights, weights_only=False)
@@ -88,8 +90,8 @@ def load_model(args):
 
     return model
 
-def main():
-    args = parser.parse_args()
+def main(config = {}):
+    args.__dict__.update(config)
 
     if args.load_after_peft:
         input_state_dict = torch.load(args.input_weights, weights_only=False)
@@ -172,4 +174,8 @@ def main():
                 augmentation_multiplicity=args.augmentation_multiplicity, grad_sample_mode=args.grad_sample_mode, forget_loader=forget_loader)
 
 if __name__ == "__main__":
-    main()
+    from ray import tune
+    tune.run(main, num_samples=5, config={
+        'batch_size': tune.choice([64, 128]),
+        'learning_rate': tune.loguniform(1e-4, 1e-1)
+    })

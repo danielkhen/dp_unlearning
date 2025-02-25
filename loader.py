@@ -80,10 +80,22 @@ def model_factory(model_name, state_dict=None, differential_privacy=None, pretra
                 qkv_bias=True,
                 norm_layer=LayerNorm
             )
+        case 'vit-large':
+            model = VisionTransformer(
+                img_size=static.IMG_SIZE, 
+                patch_size=4,
+                embed_dim=1024,
+                depth=24, 
+                num_heads=16, 
+                mlp_ratio=4,
+                num_classes=static.CLASSES_NUM,
+                qkv_bias=True,
+                norm_layer=LayerNorm
+            )
         case _:
             model = timm.create_model(model_name, num_classes=10, pretrained=pretrained)
 
-    if model_name in ('vit-base', 'vit-small', 'vit-tiny') and pretrained: # Load pretrained manually
+    if model_name in ('vit-large',' vit-base', 'vit-small', 'vit-tiny') and pretrained: # Load pretrained manually
         timm_name = model_name.replace('-', '_') + '_patch16_224'
         timm_model = timm.create_model(timm_name, pretrained=True)
         timm_state_dict = timm_model.state_dict()
