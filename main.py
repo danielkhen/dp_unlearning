@@ -174,8 +174,4 @@ def main(config = {}):
                 augmentation_multiplicity=args.augmentation_multiplicity, grad_sample_mode=args.grad_sample_mode, forget_loader=forget_loader)
 
 if __name__ == "__main__":
-    from ray import tune
-    tune.run(main, num_samples=5, config={
-        'batch_size': tune.choice([64, 128]),
-        'learning_rate': tune.loguniform(1e-4, 1e-1)
-    })
+    main()
