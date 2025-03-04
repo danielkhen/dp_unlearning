@@ -24,9 +24,35 @@ The following table shows the accuracies achieved with the different methods tri
 ### ViT-Tiny
 | Method | Trained on | Parameters | Test accuracy | Train accuracy |
 |---|---|---|---|---|
-| Normal | X | 5.6M | 88.02 | 99.97 |
+| Normal | X | 5.6M | 88.02 | 99.8 |
 | DP | X | 5.6M | 47.42 | 48.90 |
 | LoRa (Rank=16) | X | 0.6M | 87.73 | 95.13 |
 | LoRa (Rank=8) | DP | 0.3M | 84.91 | 90.66 |
 | LoRa (Rank=16) | DP | 0.6M | 87.55 | 95.76 |
 | LoRa (Rank=32) | DP | 1.2M | 88.23 | 96.83 |
+
+### ViT-Base
+#### Notes
+- The pretrained model refers to ViT-Base with input size 224, trained on ImageNet, thus in the following training Cifar10 images were resized from size 32 to 224.
+- Each model was trained for 5 epochs which means the models are not fully converged but close.
+- Train accuracies are not exact as they were captured mid training while the models weights were still changing.
+
+#### Results
+
+| Method | Trained on | Parameters | Test accuracy | Train accuracy | Comment |
+|---|---|---|---|---|---|
+| Normal | pretrained | 85.8M | 99.02 | 99.9 | |
+| DP (eps=8) | pretrained | 85.8M | 97.8 | 98.45 | |
+| DP (eps=3) | pretrained | 85.8M | 97.57 | 98.22 | |
+| DP (eps=2) | pretrained | 85.8M | 97.5 | 98.14 | |
+| DP (eps=1) | pretrained | 85.8M | 97.32 | 97.85 | |
+| LoRa (Rank=2-64) | DP (eps=1) and pretrained | 1M - 10M | 98.7 - 98.85 | | Power of 2 rank from 2 to 64 LoRa on attention and MLP linear layers |
+| LoRa (Rank=4, 1) | DP (eps=1) | 0.65M | 98.77 | 99.7 | rank 4 LoRa on attention and MLP linear layers and rank 1 out of 3 on convolutional patch embedding |
+
+#### Conclusions
+- LoRa failed to achieve higher accuracies for higher ranks, also choosing the DP model as a starting point didn't move this barrier.
+- The use of pretrained models allowed high accuracy for both LoRa with low ranks and differential privacy with low epsilons.
+- The accuracy of the model is barely hurt with less then 1% of the original parameters.
+
+#### Unlearning
+Both the Normal model and the LoRa (Rank=4, 1) model were unlearned using the NegGrad+ algorithm (descent on the retain and ascent on the forget) until the accuracy on the forget set equaled the accuracy on the test set. Remarkably the LoRa model ended up with a test set accuracy of 98.21, notably higher then the test set accuracy on the normal model of 97.66

@@ -47,18 +47,27 @@ def train(model, train_loader, test_loader, criterion, optimizer, weights_path, 
         }
 
         if forget_loader:
+            test_loss, test_accuracy = tester.test(model, test_loader, criterion)
+            print(f"Epoch {epoch} - Test loss: {test_loss}, Test accuracy: {test_accuracy} , Time: {(end_time - start_time):.2f}s")
             print(f"Epoch {epoch} - Forget loss: {forget_epoch_loss}, Forget accuracy: {forget_epoch_accuracy} , Time: {(end_time - start_time):.2f}s")
 
             epoch_state |= {
                 'forget_loss': forget_epoch_loss, 
-                'forget_accuracy': forget_epoch_accuracy
+                'forget_accuracy': forget_epoch_accuracy,
+                'test_loss': test_loss,
+                'test_accuracy': test_accuracy
             }
+
         
         state_dict['epochs'].append(epoch_state)
 
         # Stop training if loss achieved goal
         if epoch_loss <= loss_goal:
             print("Training stopped after achieving loss goal")
+            break
+
+        if forget_loader and test_accuracy > forget_epoch_accuracy:
+            print("Forget accuracy is lower than test accuracy")
             break
 
         # Perform schedulers steps
@@ -246,7 +255,7 @@ def neg_grad(model, retain_loader, forget_loader, criterion, optimizer):
     retain_total_predictions, forget_total_predictions = 0, 0
     model.train() # Set the model to training mode
 
-    loader = zip(retain_loader, itertools.cycle(forget_loader))
+    #loader = itertools.islice(zip(itertools.cycle(retain_loader), itertools.cycle(forget_loader)), static.DATASET_SIZE)
 
     for (retain_inputs, retain_labels), (forget_inputs, forget_labels) in zip(retain_loader, forget_loader):
         # Move inputs and labels to the specified device
