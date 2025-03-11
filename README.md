@@ -1,8 +1,8 @@
 # DP Unlearning
-This repository is part of a research on using differential privacy to get a model for better unlearning, this research suggests the following training method:
+This repository is part of a research on using differential privacy to achieve a model that better recovers from unlearning, this research suggests the following training method:
 1. Training the model using diffential privacy to obtain a model with similar train and test accuracy.
-2. Fine-tune the differentialy private model on a small amount of parameters, that way storing critical information "remembering" the dataset will only sit on a small amount of parameters.
-When we want to unlearn a specific set in the dataset, we unlearn only the specific parameters that were trained in the fine-tuning process, which will hopefully hurt the model less when unlearning.
+2. Fine-tune the differentialy private model on a small amount of parameters, that way storing critical information/remembering the dataset in a small amount of parameters.
+When we want to unlearn a specific forget set in the dataset, we unlearn only the on specific parameters that were trained in the fine-tuning process, which will hopefully hurt the model's accuracy less when unlearning.
 
 ## Stage 1
 In the first stage of this research we want to get the highest accuracy model trained with this method.
@@ -30,6 +30,10 @@ The following table shows the accuracies achieved with the different methods tri
 | LoRa (Rank=8) | DP | 0.3M | 84.91 | 90.66 |
 | LoRa (Rank=16) | DP | 0.6M | 87.55 | 95.76 |
 | LoRa (Rank=32) | DP | 1.2M | 88.23 | 96.83 |
+
+
+## Stage 2
+Test unlearning (until test and forget set accuracies are the same) the original model against the new method, compare both test accuracies, hopefully achieving higher accuracy on the new method.
 
 ### ViT-Base
 #### Notes
