@@ -25,7 +25,6 @@ AUGMENTATIONS = (
 )
 
 NORMALIZATIONS = (
-        transforms.Resize(224),
         transforms.ToTensor(),
         transforms.Normalize(DATASET_MEAN, DATASET_STD)
 )
