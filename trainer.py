@@ -136,7 +136,7 @@ def train_epoch(model, train_loader, criterion, optimizer, keep_gradients=False,
         loss = criterion(outputs, labels)
         running_loss += loss.item()
         loss.backward()
-
+        
         # Adjust learning weights and zero gradients
         if not keep_gradients and ((idx + 1) % accumulation_steps == 0 or idx == len(train_loader) - 1) :
             optimizer.step()
@@ -189,7 +189,7 @@ def train_epoch_dp(model, train_loader, criterion, optimizer, augmentation_multi
         optimizer.zero_grad()
 
     # Calculate the average loss and accuracy
-    avg_loss = running_loss / (len(train_loader) * augmentation_multiplicity)
+    avg_loss = running_loss / len(train_loader)
     accuracy = 100 * correct_predictions / total_predictions
 
     return avg_loss, accuracy

@@ -154,7 +154,9 @@ def main(config = {}):
                 epochs=args.epochs,
                 target_delta=args.delta,
                 max_grad_norm=args.max_grad_norm,
-                origin_params=['patch_embed.proj.bias']
+                origin_params=['patch_embed.proj.bias'],
+                torch_seed_is_fixed=True,
+                #clipping_fn='Abadi'
             )
 
             privacy_engine.attach(optimizer)  
