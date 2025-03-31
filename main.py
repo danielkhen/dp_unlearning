@@ -136,12 +136,14 @@ def main(config = {}):
             sample_rate = args.augmentation_multiplicity / len(train_loader)
 
             noise_multiplier=opacus.accountants.utils.get_noise_multiplier(
-                    target_epsilon=args.epsilon,
-                    target_delta=args.delta,
-                    sample_rate=sample_rate,
-                    epochs=args.epochs,
-                    accountant=privacy_engine.accountant.mechanism(),
-                )
+                target_epsilon=args.epsilon,
+                target_delta=args.delta,
+                sample_rate=sample_rate,
+                epochs=args.epochs,
+                accountant=privacy_engine.accountant.mechanism(),
+            )
+
+            print("Using noise multiplier: " + noise_multiplier)
 
             model, optimizer, train_loader = args.noise_multiplier if args.noise_multiplier else privacy_engine.make_private(
                 module=model,
