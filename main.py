@@ -143,7 +143,7 @@ def main(config = {}):
                 accountant=privacy_engine.accountant.mechanism(),
             )
 
-            print("Using noise multiplier: " + noise_multiplier)
+            print(f"Using noise multiplier: {noise_multiplier}")
 
             model, optimizer, train_loader = args.noise_multiplier if args.noise_multiplier else privacy_engine.make_private(
                 module=model,
