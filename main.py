@@ -133,7 +133,7 @@ def main(config = {}):
     match args.differential_privacy:
         case 'opacus':
             privacy_engine = opacus.PrivacyEngine()
-            sample_rate = args.augmentation_multiplicity / len(train_loader)
+            sample_rate = 1 / len(train_loader)
 
             noise_multiplier = args.noise_multiplier if args.noise_multiplier else opacus.accountants.utils.get_noise_multiplier(
                 target_epsilon=args.epsilon,
@@ -142,6 +142,8 @@ def main(config = {}):
                 epochs=args.epochs,
                 accountant=privacy_engine.accountant.mechanism(),
             )
+
+            noise_multiplier /= args.augmentation_multiplicity
 
             print(f"Using noise multiplier: {noise_multiplier}")
 
