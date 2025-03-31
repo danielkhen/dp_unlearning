@@ -133,18 +133,37 @@ def main(config = {}):
     match args.differential_privacy:
         case 'opacus':
             privacy_engine = opacus.PrivacyEngine()
+            sample_rate = args.augmentation_multiplicity / len(train_loader)
 
-            model, optimizer, train_loader = privacy_engine.make_private_with_epsilon(
+            noise_multiplier=opacus.accountants.utils.get_noise_multiplier(
+                    target_epsilon=args.epsilon,
+                    target_delta=args.delta,
+                    sample_rate=sample_rate,
+                    epochs=args.epochs,
+                    accountant=privacy_engine.accountant.mechanism(),
+                )
+
+            model, optimizer, train_loader = privacy_engine.make_private(
                 module=model,
                 optimizer=optimizer,
                 data_loader=train_loader,
-                epochs=args.epochs,
-                target_epsilon=args.epsilon,
-                target_delta=args.delta,
+                criterion=criterion,
+                noise_multiplier=noise_multiplier,
                 max_grad_norm=args.max_grad_norm,
-                grad_sample_mode=args.grad_sample_mode,
                 poisson_sampling=False # Must be false so incomplete batches wouldn't be counted
             )
+
+            # model, optimizer, train_loader = privacy_engine.make_private_with_epsilon(
+            #     module=model,
+            #     optimizer=optimizer,
+            #     data_loader=train_loader,
+            #     epochs=args.epochs,
+            #     target_epsilon=args.epsilon,
+            #     target_delta=args.delta,
+            #     max_grad_norm=args.max_grad_norm,
+            #     grad_sample_mode=args.grad_sample_mode,
+            #     poisson_sampling=False # Must be false so incomplete batches wouldn't be counted
+            # )
         case 'fast-dp':
             privacy_engine = fastDP.PrivacyEngine(
                 model,
