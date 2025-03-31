@@ -1,13 +1,13 @@
 import static
 import torch
 import timm
-import math
 
 from timm.models.vision_transformer import VisionTransformer
 from torchvision import datasets
 from opacus.validators import ModuleValidator
 from torch.nn import LayerNorm
 from torch.utils.data import Sampler, DataLoader
+from modules.wideresnet import WideResNet
     
 class MultiplicitySampler(Sampler):
     def __init__(self, dataset, augmentation_multiplicity):
@@ -44,6 +44,8 @@ def load_dataset(dataset, dataset_transform, testset_transform, batch_size, num_
 
 def model_factory(model_name, state_dict=None, differential_privacy=None, pretrained=False):
     match model_name:
+        case 'wrn-40-4':
+            model = WideResNet(40, static.CLASSES_NUM, 4)
         case 'vit-tiny':
             model = VisionTransformer(
                 img_size=static.IMG_SIZE, 
