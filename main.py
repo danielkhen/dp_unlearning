@@ -143,7 +143,7 @@ def main(config = {}):
                     accountant=privacy_engine.accountant.mechanism(),
                 )
 
-            model, optimizer, train_loader = privacy_engine.make_private(
+            model, optimizer, train_loader = args.noise_multiplier if args.noise_multiplier else privacy_engine.make_private(
                 module=model,
                 optimizer=optimizer,
                 data_loader=train_loader,

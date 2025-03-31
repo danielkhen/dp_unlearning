@@ -49,6 +49,7 @@ parser.add_argument('--differential-privacy', '--dp', default=None, type=str, ch
 parser.add_argument('--max-physical-batch-size', '--maxbs', default=128, type=int, help='maximum physical batch size for holding grad samples in memory')
 parser.add_argument('--epsilon', default=8.0, type=float, help='epsilon for differential privacy')
 parser.add_argument('--delta', default=1e-5, type=float, help='delta for differential privacy')
+parser.add_argument('--noise-multiplier', default=None, type=float, help='noise multiplier for differential privacy')
 parser.add_argument('--max-grad-norm', default=1.0, type=float, help='maximum gradient norm for differential privacy')
 parser.add_argument('--grad-sample-mode', default='hooks', type=str, help='opacus mode for computing per sample gradients, no-op uses functorch')
 parser.add_argument('--no-fix-dp', action='store_true', help='do not fix the model to allow differential privacy')
