@@ -31,6 +31,28 @@ The following table shows the accuracies achieved with the different methods tri
 | LoRa (Rank=16) | DP | 0.6M | 87.55 | 95.76 |
 | LoRa (Rank=32) | DP | 1.2M | 88.23 | 96.83 |
 
+### WRN-16-4
+Wide Resnet of depth 16 and width 4.
+
+| Method | Trained on | Parameters | Test accuracy | Train accuracy | Comment |
+|---|---|---|---|---|---|
+| Normal | | 2.75M | 91.04 | 99.89 | |
+| DP (eps=8) | | 2.75M | 69.12 | 70.4 | Trained with augmentation multiplicity 4, and batch size 2048. The paper "Unlocking High-Accuracy Differentially
+Private Image Classification through Scale" suggests using AM 16 and BS 4096 to achieve ~79 accuracy (runtime becomes to high). |
+| LoRa (Rank=16) | | 244K | 88.58 | 94.756 | |
+| LoRa (Rank=8) | DP (eps=8) | 125K | 86.46 | 91.412 | |
+| LoRa (Rank=16) | DP (eps=8) | 244K | 88.92 | 95.548 | |
+| LoRa (Rank=32) | DP (eps=8) | 482K | 90.21 | 98 | |
+| Conv-Adapter | DP (eps=8) | 453K | 88.74 | 97.364 | First block fully trained, second has 1/4 channels and last has 1/16 channels. |
+
+### PEFT on larger model vs smaller model
+
+| Model | Method | Parameters | Test accuracy |
+|---|---|---|---|
+| ViT-Tiny | Normal | 5.36M | 86.03 |
+| ViT-Small | Lora(rank=16) | 1.24M | 87.83 |
+| ViT-Small | Lora(rank=32) | 2.42M | 88.78 |
+| ViT-Small | Lora(rank=64) | 4.78M | 89.24 |
 
 ## Stage 2
 Test unlearning (until test and forget set accuracies are the same) the original model against the new method, compare both test accuracies, hopefully achieving higher accuracy on the new method.

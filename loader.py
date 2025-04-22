@@ -46,6 +46,8 @@ def model_factory(model_name, state_dict=None, differential_privacy=None, pretra
     match model_name:
         case 'wrn-40-4':
             model = WideResNet(40, static.CLASSES_NUM, 4)
+        case 'wrn-16-4':
+            model = WideResNet(16, static.CLASSES_NUM, 4)
         case 'vit-tiny':
             model = VisionTransformer(
                 img_size=static.IMG_SIZE, 
