@@ -33,17 +33,19 @@ The following table shows the accuracies achieved with the different methods tri
 
 ### WRN-16-4
 Wide Resnet of depth 16 and width 4.
+All unlearning tasks where done with the same epoch budget (30 epochs), using NegGrad+ until test and forget accuracies where the same.
 
-| Method | Trained on | Parameters | Test accuracy | Train accuracy | Comment |
-|---|---|---|---|---|---|
-| Normal | | 2.75M | 91.04 | 99.89 | |
-| DP (eps=8) | | 2.75M | 69.12 | 70.4 | Trained with augmentation multiplicity 4, and batch size 2048. The paper "Unlocking High-Accuracy Differentially
+| Method | Trained on | Parameters | Test accuracy | Train accuracy | Random Forget 1000 | Comment |
+|---|---|---|---|---|---|---|
+| Normal | | 2.75M | 91.04 | 99.89 | 67.28 | |
+| DP (eps=8) | | 2.75M | 69.12 | 70.4 | | Trained with augmentation multiplicity 4, and batch size 2048. The paper "Unlocking High-Accuracy Differentially
 Private Image Classification through Scale" suggests using AM 16 and BS 4096 to achieve ~79 accuracy (runtime becomes to high). |
-| LoRa (Rank=16) | | 244K | 88.58 | 94.756 | |
-| LoRa (Rank=8) | DP (eps=8) | 125K | 86.46 | 91.412 | |
-| LoRa (Rank=16) | DP (eps=8) | 244K | 88.92 | 95.548 | |
-| LoRa (Rank=32) | DP (eps=8) | 482K | 90.21 | 98 | |
-| Conv-Adapter | DP (eps=8) | 453K | 88.74 | 97.364 | First block fully trained, second has 1/4 channels and last has 1/16 channels. |
+| LoRa (Rank=16) | | 244K | 88.58 | 94.756 | 84.94 | |
+| LoRa (Rank=8) | DP (eps=8) | 125K | 86.46 | 91.412 | 84.55 | |
+| LoRa (Rank=16) | DP (eps=8) | 244K | 88.92 | 95.548 | 84.71 | |
+| LoRa (Rank=32) | DP (eps=8) | 482K | 90.21 | 98 | 83.49 | |
+| Conv-Adapter | DP (eps=8) | 453K | 88.74 | 97.364 | | First block fully trained, second has 1/4 channels and last has 1/16 channels. |
+| DP (eps=8) LoRa (Rank=16) | | 244K | 89.18 | 94.712 | | DP trained with both original and lora weights, then finetuned only on lora weights |
 
 ### PEFT on larger model vs smaller model
 
