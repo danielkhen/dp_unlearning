@@ -84,3 +84,32 @@ Test unlearning (until test and forget set accuracies are the same) the original
 
 #### Unlearning
 Both the Normal model and the LoRa (Rank=4, 1) model were unlearned using the NegGrad+ algorithm (descent on the retain and ascent on the forget) until the accuracy on the forget set equaled the accuracy on the test set. Remarkably the LoRa model ended up with a test set accuracy of 98.21, notably higher then the test set accuracy on the normal model of 97.66
+
+### Lora research
+In this stage we minimize the amount of parameters across different sizes of the ViT model using LoRa with different ranks, we then see the effects of those changes on model train and test accuracy, the accuracy gap, and the effect on the efficiency on unlearning tasks.
+
+The following are test accuracies of different models with different parameter counts, trained on the CIFAR10 dataset for 100 epochs:
+
+| Model \ Method | LoRa (Rank=8) | LoRa (Rank=16) | LoRa (Rank=32) | Normal |
+|---|---|---|---|---|
+| ViT-Tiny | 81.06 | 85.29 | 87.43 | 84.69 |
+| ViT-Small | 81.81 | 86.24 | 88.14 | 87.98 |
+| ViT-Base | 85.65 | 88.00 | 88.96 | 88.36 |
+
+The following are test accuracies of different models with different parameter counts, after performing unlearning on a random set of size 1000 with an epoch budget of 8:
+
+| Model \ Method | LoRa (Rank=8) | LoRa (Rank=16) | LoRa (Rank=32) | Normal |
+|---|---|---|---|---|
+| ViT-Tiny | 79.23 | 83.42 | 84.65 | 79.71 |
+| ViT-Small | 81.65 | 84.57 | 85.78 | 78.57 |
+| ViT-Base | 78.47 | 78.07 | 78.13 | 80.36 |
+
+Additional data on ViT-Tiny:
+![Parameter Count](assets/parameter_count.png)
+Figure 1 | A plot showing parameter count in millions for each training method.
+![Comparison Plot](assets/comparison_plot.png)
+Figure 2 | A plot showing train, test and forget (model unlearning task) accuracies.
+![Accuracy Gaps](assets/accuracy_gaps.png)
+Figure 3 | A plot showing train-test accuracies gap.
+![Unlearn Loss](assets/unlearn_loss.png)
+Figure 4 | A plot showing the loss of accuracy after an unlearning task.
