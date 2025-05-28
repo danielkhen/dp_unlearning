@@ -96,7 +96,7 @@ The following are test accuracies of different models with different parameter c
 | ViT-Small | 81.81 | 86.24 | 88.14 | 87.98 |
 | ViT-Base | 85.65 | 88.00 | 88.96 | 88.36 |
 
-The following are test accuracies of different models with different parameter counts, after performing unlearning on a random set of size 1000 with an epoch budget of 8:
+The following are test accuracies of different models with different parameter counts, after performing unlearning on a random set of size 1000 with an epoch budget of 8 with the NegGrad+ algorithm:
 
 | Model \ Method | LoRa (Rank=8) | LoRa (Rank=16) | LoRa (Rank=32) | Normal |
 |---|---|---|---|---|
@@ -113,3 +113,31 @@ Figure 2 | A plot showing train, test and forget (model unlearning task) accurac
 Figure 3 | A plot showing train-test accuracies gap.
 ![Unlearn Loss](assets/unlearn_loss.png)
 Figure 4 | A plot showing the loss of accuracy after an unlearning task.
+
+#### GDR-GMA
+Here we proceed with comparing unlearning tasks on our previous models but using a "better" algorithm.
+
+For reference, the following are test accuracies of different models with different parameter counts, trained on the CIFAR10 dataset for 100 epochs:
+
+| Model \ Method | LoRa (Rank=8) | LoRa (Rank=16) | LoRa (Rank=32) | Normal |
+|---|---|---|---|---|
+| ViT-Tiny | 81.06 | 85.29 | 87.43 | 84.69 |
+| ViT-Small | 81.81 | 86.24 | 88.14 | 87.98 |
+| ViT-Base | 85.65 | 88.00 | 88.96 | 88.36 |
+
+The following are test accuracies of different models with different parameter counts, after performing unlearning on a random set of size 10000 with an epoch budget of 4 with the GDR-GMA algorithm:
+
+| Model \ Method | LoRa (Rank=8) | LoRa (Rank=16) | LoRa (Rank=32) | Normal |
+|---|---|---|---|---|
+| ViT-Tiny | 79.83 | 82.3 | 81.93 | 80.78 |
+| ViT-Small | 79.6 | 82.27 | 83.55 | 80.42 |
+| ViT-Base | 80.69 | 82.88 | 81.54 | 79.46 |
+
+Additionally ViT-Tiny using LoRa (Rank=4) achieved 75.79% accuracy and with LoRa (Rank=64) 83.23% accuracy.
+The following are unlearning results like above but when performing the task on the base model architecture instead of using LoRa (that is taking the LoRa weights and adding them to the original weights, and then removing the LoRa weights):
+
+| Model \ Method | LoRa (Rank=8) | LoRa (Rank=16) | LoRa (Rank=32) |
+|---|---|---|---|
+| ViT-Tiny | 80.37 | 83.2 | 84.23 |
+
+In this setup, using LoRa (rank=16) to unlearn the "Normal" ViT-Tiny model achieved a worse accuracy then the original setup. Also Using a ViT-Tiny model pre-trained with DP (epsilon=8) and then fine-tuned using LoRa (rank=16) for unlearning, achieved worse accuracy then the original setup (ViT-Tiny Lora (Rank=16) unlearning).

@@ -190,7 +190,14 @@ def main(config = {}):
         } if args.input_weights else None
     }
 
+    #model = model.merge_and_unload()
+
     model.to(static.CUDA)
+
+    # import unlearn
+    # unlearn.unlearn_model(model, criterion, optimizer, {'unlearn': forget_loader, 'remain': train_loader, 'val': test_loader}, 
+    #                       num_epochs=args.epochs, batch_size=args.batch_size, weights_path=args.output)
+    
     trainer.train(model, train_loader, test_loader, criterion, optimizer, args.output, schedulers=schedulers, epochs=args.epochs, 
                 checkpoint_every=args.checkpoint_every, state_dict=starting_state_dict, differential_privacy=args.differential_privacy, accumulation_steps=args.accumulation_steps,
                 loss_goal=args.loss_goal, ma_model=ema_model if args.exponential_moving_average else None, max_physical_batch_size=args.max_physical_batch_size,
