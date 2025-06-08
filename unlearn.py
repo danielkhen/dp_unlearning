@@ -1,5 +1,6 @@
 import static
 import time
+import itertools
 
 
 import math
@@ -65,7 +66,7 @@ def unlearn_model(model:nn.Module, criterion, optimizer, data_loaders, num_epoch
         running_loss= 0.0
         running_corrects = 0.0
         
-        for (t_data, t_labels), (n_data, n_labels)in zip(data_loaders['unlearn'], data_loaders['remain']):
+        for (t_data, t_labels), (n_data, n_labels) in zip(data_loaders['unlearn'], itertools.cycle(data_loaders['remain'])):
             model.train()
             n_data, n_labels = n_data.to(static.CUDA), n_labels.to(static.CUDA)
             optimizer.zero_grad()

@@ -197,11 +197,19 @@ def main(config = {}):
     # import unlearn
     # unlearn.unlearn_model(model, criterion, optimizer, {'unlearn': forget_loader, 'remain': train_loader, 'val': test_loader}, 
     #                       num_epochs=args.epochs, batch_size=args.batch_size, weights_path=args.output)
+
+    trainer.scrub_weights(model, retain_loader=train_loader, forget_loader=forget_loader, criterion=criterion)
+
+    print(tester.test(model, test_loader, criterion))
+    print(tester.test(model, train_loader, criterion))
     
-    trainer.train(model, train_loader, test_loader, criterion, optimizer, args.output, schedulers=schedulers, epochs=args.epochs, 
-                checkpoint_every=args.checkpoint_every, state_dict=starting_state_dict, differential_privacy=args.differential_privacy, accumulation_steps=args.accumulation_steps,
-                loss_goal=args.loss_goal, ma_model=ema_model if args.exponential_moving_average else None, max_physical_batch_size=args.max_physical_batch_size,
-                augmentation_multiplicity=args.augmentation_multiplicity, grad_sample_mode=args.grad_sample_mode, forget_loader=forget_loader)
+    if args.unlearn:
+        print(tester.test(model, forget_loader, criterion))
+    
+    # trainer.train(model, train_loader, test_loader, criterion, optimizer, args.output, schedulers=schedulers, epochs=args.epochs, 
+    #             checkpoint_every=args.checkpoint_every, state_dict=starting_state_dict, differential_privacy=args.differential_privacy, accumulation_steps=args.accumulation_steps,
+    #             loss_goal=args.loss_goal, ma_model=ema_model if args.exponential_moving_average else None, max_physical_batch_size=args.max_physical_batch_size,
+    #             augmentation_multiplicity=args.augmentation_multiplicity, grad_sample_mode=args.grad_sample_mode, forget_loader=forget_loader, lr=args.learning_rate)
 
 if __name__ == "__main__":
     main()

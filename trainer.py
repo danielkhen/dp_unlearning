@@ -5,15 +5,21 @@ import static
 import itertools
 
 from opacus.utils.batch_memory_manager import BatchMemoryManager
-from torch.func import grad_and_value, vmap, functional_call
+from torch.func import grad_and_value, vmap, functional_call, grad
 from opacus.grad_sample.functorch import make_functional
 
 # Train model
 def train(model, train_loader, test_loader, criterion, optimizer, weights_path, schedulers=[], epochs=200, checkpoint_every=10, state_dict={}, accumulation_steps=1,
-          loss_goal=0, differential_privacy=None, ma_model=None, max_physical_batch_size=128, augmentation_multiplicity=1, grad_sample_mode='no_op', forget_loader=None):
+          loss_goal=0, differential_privacy=None, ma_model=None, max_physical_batch_size=128, augmentation_multiplicity=1, grad_sample_mode='no_op', forget_loader=None, lr=1e-3):
     training_start_time = time.time()
     state_dict['epochs'] = []
     state_dict['checkpoints'] = []
+
+    # Save initial weights
+    initial_params = {n: p.clone().detach() for n, p in model.named_parameters() if p.requires_grad}
+
+    # Compute Fisher diagonal on retained data
+    fisher_diag = compute_fisher_diag(model, train_loader, criterion)
 
     for epoch in range(1, epochs + 1):
         # Train for one epoch and calculate the average loss
@@ -33,7 +39,10 @@ def train(model, train_loader, test_loader, criterion, optimizer, weights_path, 
                 epoch_loss, epoch_accuracy = train_epoch(model, train_loader, criterion, optimizer, accumulation_steps=accumulation_steps)
             case _:
                 if forget_loader:
-                    epoch_loss, forget_epoch_loss, epoch_accuracy, forget_epoch_accuracy = neg_grad(model, train_loader, forget_loader, criterion, optimizer)
+                    #epoch_loss, forget_epoch_loss, epoch_accuracy, forget_epoch_accuracy = orthograd_unlearn(model, train_loader, forget_loader, criterion, lr)
+                    #epoch_loss, forget_epoch_loss, epoch_accuracy, forget_epoch_accuracy = fim_unlearn(model, train_loader, forget_loader, criterion, optimizer, initial_params, fisher_diag)
+                    # Uncomment the next line to use NegGrad instead of FIM unlearning
+                    epoch_loss, forget_epoch_loss, epoch_accuracy, forget_epoch_accuracy = neg_grad(model, train_loader, forget_loader, criterion, optimizer, mode='descent')
                 else:
                     epoch_loss, epoch_accuracy = train_epoch(model, train_loader, criterion, optimizer, accumulation_steps=accumulation_steps)
 
@@ -249,15 +258,15 @@ def train_epoch_dp_functorch(model, train_loader, criterion, optimizer, augmenta
     return avg_loss, accuracy
 
 # NegGrad+ one epoch
-def neg_grad(model, retain_loader, forget_loader, criterion, optimizer):
+def neg_grad(model, retain_loader, forget_loader, criterion, optimizer, mode='both'):
     retain_running_loss, forget_running_loss = 0.0, 0.0
     retain_correct_predictions, forget_correct_predictions = 0, 0
     retain_total_predictions, forget_total_predictions = 0, 0
     model.train() # Set the model to training mode
 
-    #loader = itertools.islice(zip(itertools.cycle(retain_loader), itertools.cycle(forget_loader)), static.DATASET_SIZE)
+    loader = zip(retain_loader, itertools.cycle(forget_loader))
 
-    for (retain_inputs, retain_labels), (forget_inputs, forget_labels) in zip(retain_loader, forget_loader):
+    for (retain_inputs, retain_labels), (forget_inputs, forget_labels) in loader:
         # Move inputs and labels to the specified device
         retain_inputs, retain_labels = retain_inputs.to(static.CUDA), retain_labels.to(static.CUDA)
         forget_inputs, forget_labels = forget_inputs.to(static.CUDA), forget_labels.to(static.CUDA)
@@ -279,12 +288,170 @@ def neg_grad(model, retain_loader, forget_loader, criterion, optimizer):
         forget_loss = criterion(forget_outputs, forget_labels)
         retain_running_loss += retain_loss.item()
         forget_running_loss += forget_loss.item()
-        retain_loss.backward()
         (-1.0 * forget_loss).backward()
+        if mode == 'both':
+            retain_loss.backward()
 
         # Adjust learning weights and zero gradients
         optimizer.step()
         optimizer.zero_grad()
+
+    # Calculate the average loss and accuracy
+    retain_avg_loss = retain_running_loss / len(retain_loader)
+    forget_avg_loss = forget_running_loss / len(retain_loader)
+    retain_accuracy = 100 * retain_correct_predictions / retain_total_predictions
+    forget_accuracy = 100 * forget_correct_predictions / forget_total_predictions
+
+    return retain_avg_loss, forget_avg_loss, retain_accuracy, forget_accuracy
+
+def compute_fisher_diag(model, dataloader, criterion):
+    """
+    Compute the diagonal of the Fisher Information Matrix for the given model.
+    """
+    model.eval()
+    fisher_diag = {n: torch.zeros_like(p, device=static.CUDA) for n, p in model.named_parameters()}
+
+    fmodel, _fparams = make_functional(model)
+
+    def compute_sample_loss(params, input, label):
+        inputs, labels = input.unsqueeze(0), label.unsqueeze(0)
+        outputs = fmodel(params, inputs)
+        loss = criterion(outputs, labels)
+
+        return loss
+
+    params = list(model.parameters())
+
+    compute_grad_samples = vmap(grad(compute_sample_loss), in_dims=(None, 0, 0)) # compute grads over groups of batches
+
+
+    for inputs, targets in dataloader:
+        inputs, targets = inputs.to(static.CUDA), targets.to(static.CUDA)
+        grad_samples = compute_grad_samples(params, inputs, targets)
+        grad_samples = [grad.detach() for grad in grad_samples]
+
+        for (n, p), g in zip(model.named_parameters(), grad_samples):
+            if p.requires_grad is not None:
+                fisher_diag[n] += g.pow(2).mean(dim=0) ** 2
+
+    # Normalize by the number of batches
+    num_batches = len(dataloader)
+    for n in fisher_diag:
+        fisher_diag[n] /= num_batches
+
+    return fisher_diag
+
+def scrub_weights(model, retain_loader, forget_loader, criterion, lam=0.1, sigma=1e-3):
+    with torch.no_grad():
+        fim_forget = compute_fisher_diag(model, forget_loader, criterion)
+        fim_retain = compute_fisher_diag(model, retain_loader, criterion)
+
+        for name, param in model.named_parameters():
+            if not param.requires_grad:
+                continue
+            Ff = fim_forget.get(name)
+            Fr = fim_retain.get(name)
+            I = Ff - lam * Fr  # net importance
+
+            # Generate noise based on importance
+            noise = torch.randn_like(param) * torch.sqrt(torch.relu(I) * sigma)
+            param.add_(noise)
+
+def fim_unlearn(model, retain_loader, forget_loader, criterion, optimizer, initial_params, fisher_diag):
+    retain_running_loss, forget_running_loss = 0.0, 0.0
+    retain_correct_predictions, forget_correct_predictions = 0, 0
+    retain_total_predictions, forget_total_predictions = 0, 0
+
+    model.train() # Set the model to training mode
+    loader = zip(retain_loader, itertools.cycle(forget_loader))
+
+    for (retain_inputs, retain_labels), (forget_inputs, forget_labels) in loader:
+        # Move inputs and labels to the specified device
+        retain_inputs, retain_labels = retain_inputs.to(static.CUDA), retain_labels.to(static.CUDA)
+        forget_inputs, forget_labels = forget_inputs.to(static.CUDA), forget_labels.to(static.CUDA)
+
+        # Compute predictions
+        retain_outputs = model(retain_inputs)
+        forget_outputs = model(forget_inputs)
+        _, retain_predictions = torch.max(retain_outputs.data, 1)
+        _, forget_predictions = torch.max(forget_outputs.data, 1)
+
+        # Update the running total of correct predictions and samples
+        retain_correct_predictions += (retain_predictions == retain_labels).sum().item()
+        forget_correct_predictions += (forget_predictions == forget_labels).sum().item()
+        retain_total_predictions += retain_labels.size(0)
+        forget_total_predictions += forget_labels.size(0)
+
+        # Compute the loss and its gradients
+        retain_loss = criterion(retain_outputs, retain_labels)
+        forget_loss = criterion(forget_outputs, forget_labels)
+        retain_running_loss += retain_loss.item()
+        forget_running_loss += forget_loss.item()
+        
+        reg_loss = sum((fisher_diag[n] * (p - initial_params[n]).pow(2)).sum() for n, p in model.named_parameters() if p.requires_grad)
+        loss = -1.0 * forget_loss + 1.0 * reg_loss
+        loss.backward()
+
+        # Adjust learning weights and zero gradients
+        optimizer.step()
+        optimizer.zero_grad()
+
+    # Calculate the average loss and accuracy
+    retain_avg_loss = retain_running_loss / len(retain_loader)
+    forget_avg_loss = forget_running_loss / len(retain_loader)
+    retain_accuracy = 100 * retain_correct_predictions / retain_total_predictions
+    forget_accuracy = 100 * forget_correct_predictions / forget_total_predictions
+
+    return retain_avg_loss, forget_avg_loss, retain_accuracy, forget_accuracy
+
+from orthograd import OrthogonalGrad, AdamUpdateDirection
+
+def orthograd_unlearn(model, retain_loader, forget_loader, criterion, lr):
+    optimizer_retain = AdamUpdateDirection(model.parameters())
+    optimizer_forget = AdamUpdateDirection(model.parameters())
+
+    unlearn_method = OrthogonalGrad(
+        lr=lr,
+        loss=criterion,
+        optimizer_retain=optimizer_retain,
+        optimizer_unlearn=optimizer_forget,
+        retain_grad_mode='per_sample',
+        update_mode='both',
+        original_model=model,
+        grad_mask=None,
+        alpha=0.5,
+    )
+
+    retain_running_loss, forget_running_loss = 0.0, 0.0
+    retain_correct_predictions, forget_correct_predictions = 0, 0
+    retain_total_predictions, forget_total_predictions = 0, 0
+    model.train() # Set the model to training mode
+
+    loader = zip(retain_loader, itertools.cycle(forget_loader))
+
+    for (retain_inputs, retain_labels), (forget_inputs, forget_labels) in loader:
+        # Move inputs and labels to the specified device
+        retain_inputs, retain_labels = retain_inputs.to(static.CUDA), retain_labels.to(static.CUDA)
+        forget_inputs, forget_labels = forget_inputs.to(static.CUDA), forget_labels.to(static.CUDA)
+
+        # Compute predictions
+        retain_outputs = model(retain_inputs)
+        forget_outputs = model(forget_inputs)
+        _, retain_predictions = torch.max(retain_outputs.data, 1)
+        _, forget_predictions = torch.max(forget_outputs.data, 1)
+
+        # Update the running total of correct predictions and samples
+        retain_correct_predictions += (retain_predictions == retain_labels).sum().item()
+        forget_correct_predictions += (forget_predictions == forget_labels).sum().item()
+        retain_total_predictions += retain_labels.size(0)
+        forget_total_predictions += forget_labels.size(0)
+
+        # Compute the loss and its gradients
+        forget_loss, retain_loss = unlearn_method(
+            model, forget_inputs, forget_labels, retain_inputs, retain_labels
+        )
+        retain_running_loss += retain_loss.item()
+        forget_running_loss += forget_loss.item()
 
     # Calculate the average loss and accuracy
     retain_avg_loss = retain_running_loss / len(retain_loader)

@@ -141,3 +141,27 @@ The following are unlearning results like above but when performing the task on 
 | ViT-Tiny | 80.37 | 83.2 | 84.23 |
 
 In this setup, using LoRa (rank=16) to unlearn the "Normal" ViT-Tiny model achieved a worse accuracy then the original setup. Also Using a ViT-Tiny model pre-trained with DP (epsilon=8) and then fine-tuned using LoRa (rank=16) for unlearning, achieved worse accuracy then the original setup (ViT-Tiny Lora (Rank=16) unlearning).
+
+#### Unlearning Algorithms ViT-Tiny
+Random samples forgetting on different parameter counts with different unlearning algorithms:
+
+| Unlearning algorithm \ Method | Normal | LoRa (Rank=32) | LoRa (Rank=16) | LoRa (Rank=8) |
+|---|---|---|---|---|
+| Normal | 84.69 | 87.43 | 85.29 | 81.06 |
+| Finetune | 84.09 | 87.40 | 85.45 | 82.20 |
+| NegGrad | 81.12 | 85.09 | 81.62 | 78.89 |
+| NegGrad+ | 85.65 | 88.00 | 88.96 | 88.36 |
+| GDR-GMA | 80.78 | 81.93 | 82.3 | 79.83 |
+| OrthoGrad | 80.96 | 84.08 | 83.13 | 79.35 |
+| Fisher | 80.48 | 83.58 | 80.81 | 77.53 |
+
+- Fisher and NegGrad are run until forget accuracy reaches original test accuracy instead of live test accuracy.
+- GDR-GMA is run on 10000 samples instead of a 1000.
+- Finetune runs 20 epochs on retain set.
+- OrthoGrad is run with mean gradient accumulation instead of per sample.
+
+![Unlearn Loss](assets/unlearning_comparison.png)
+Figure 5 | A bar chart showing the test accuracies of ViT-Tiny on different parameter counts with different unlearning algorithms.
+
+![Unlearn Loss](assets/unlearning_comparison2.png)
+Figure 6 | A plot chart showing the test accuracies of ViT-Tiny on different parameter counts with different unlearning algorithms.
