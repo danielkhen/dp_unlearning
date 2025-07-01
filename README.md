@@ -150,7 +150,7 @@ Random samples forgetting on different parameter counts with different unlearnin
 | Normal | 84.69 | 87.43 | 85.29 | 81.06 |
 | Finetune | 84.09 | 87.40 | 85.45 | 82.20 |
 | NegGrad | 81.12 | 85.09 | 81.62 | 78.89 |
-| NegGrad+ | 85.65 | 88.00 | 88.96 | 88.36 |
+| NegGrad+ | 79.71 | 84.65 | 83.42 | 79.23 |
 | GDR-GMA | 80.78 | 81.93 | 82.3 | 79.83 |
 | OrthoGrad | 80.96 | 84.08 | 83.13 | 79.35 |
 | Fisher | 80.48 | 83.58 | 80.81 | 77.53 |

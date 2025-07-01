@@ -15,11 +15,11 @@ def train(model, train_loader, test_loader, criterion, optimizer, weights_path, 
     state_dict['epochs'] = []
     state_dict['checkpoints'] = []
 
-    # Save initial weights
-    initial_params = {n: p.clone().detach() for n, p in model.named_parameters() if p.requires_grad}
+    # # Save initial weights
+    # initial_params = {n: p.clone().detach() for n, p in model.named_parameters() if p.requires_grad}
 
-    # Compute Fisher diagonal on retained data
-    fisher_diag = compute_fisher_diag(model, train_loader, criterion)
+    # # Compute Fisher diagonal on retained data
+    # fisher_diag = compute_fisher_diag(model, train_loader, criterion)
 
     for epoch in range(1, epochs + 1):
         # Train for one epoch and calculate the average loss
