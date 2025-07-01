@@ -205,6 +205,13 @@ def main(config = {}):
     
     # if args.unlearn:
     #     print(tester.test(model, forget_loader, criterion))
+
+    from hessian_eigenthings import compute_hessian_eigenthings
+
+    eigenvals, eigenvecs = compute_hessian_eigenthings(model, train_loader,
+                                                   criterion, 10)
+    
+    print(f"Eigenvalues: {eigenvals}")
     
     trainer.train(model, train_loader, test_loader, criterion, optimizer, args.output, schedulers=schedulers, epochs=args.epochs, 
                 checkpoint_every=args.checkpoint_every, state_dict=starting_state_dict, differential_privacy=args.differential_privacy, accumulation_steps=args.accumulation_steps,
