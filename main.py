@@ -206,12 +206,27 @@ def main(config = {}):
     # if args.unlearn:
     #     print(tester.test(model, forget_loader, criterion))
 
-    from hessian_eigenthings import compute_hessian_eigenthings
+    # from pyhessian import hessian
 
-    eigenvals, eigenvecs = compute_hessian_eigenthings(model, train_loader,
-                                                   criterion, 10)
+    # for blk in model.blocks:
+    #     blk.attn.fused_attn = False
+
+    # hessian_comp = hessian(model,
+    #                        criterion,
+    #                        dataloader=train_loader,
+    #                        cuda=static.CPU)
     
-    print(f"Eigenvalues: {eigenvals}")
+    # top_eigenvalues, _ = hessian_comp.eigenvalues(maxIter=10,top_n=3)
+    # # trace = hessian_comp.trace()
+    # # density_eigen, density_weight = hessian_comp.density()
+    # print(top_eigenvalues)#, trace, density_eigen)
+
+    # train_fim = trainer.compute_fisher_diag(model, train_loader, criterion)
+    # forget_fim = trainer.compute_fisher_diag(model, forget_loader, criterion)
+
+    # overlap = {p: (tfim * ffim).trace() for (p, tfim), ffim in zip(train_fim.items(), forget_fim.values())}
+    # print(overlap)
+            
     
     trainer.train(model, train_loader, test_loader, criterion, optimizer, args.output, schedulers=schedulers, epochs=args.epochs, 
                 checkpoint_every=args.checkpoint_every, state_dict=starting_state_dict, differential_privacy=args.differential_privacy, accumulation_steps=args.accumulation_steps,

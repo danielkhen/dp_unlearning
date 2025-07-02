@@ -308,8 +308,10 @@ def compute_fisher_diag(model, dataloader, criterion):
     """
     Compute the diagonal of the Fisher Information Matrix for the given model.
     """
+
     model.eval()
     fisher_diag = {n: torch.zeros_like(p, device=static.CUDA) for n, p in model.named_parameters()}
+    cosine_similarity = {0: None for n, p in model.named_parameters()}
 
     fmodel, _fparams = make_functional(model)
 
@@ -333,11 +335,16 @@ def compute_fisher_diag(model, dataloader, criterion):
         for (n, p), g in zip(model.named_parameters(), grad_samples):
             if p.requires_grad is not None:
                 fisher_diag[n] += g.pow(2).mean(dim=0) ** 2
+                cosine_similarity[n] = torch.nn.functional.cosine_similarity(*g.split(g.shape[0]//2, dim=0), dim=1).mean()
+
 
     # Normalize by the number of batches
     num_batches = len(dataloader)
     for n in fisher_diag:
         fisher_diag[n] /= num_batches
+        cosine_similarity[n] /= num_batches
+
+    print(cosine_similarity)
 
     return fisher_diag
 

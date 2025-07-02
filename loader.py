@@ -6,7 +6,7 @@ from timm.models.vision_transformer import VisionTransformer
 from torchvision import datasets
 from opacus.validators import ModuleValidator
 from torch.nn import LayerNorm
-from torch.utils.data import Sampler, DataLoader
+from torch.utils.data import Sampler, DataLoader, Subset
 from modules.wideresnet import WideResNet
     
 class MultiplicitySampler(Sampler):
@@ -33,7 +33,11 @@ def load_dataset(dataset, dataset_transform, testset_transform, batch_size, num_
     testset = dataset(root='./data', train=False, download=True, transform=testset_transform)
     
     if unlearning:
-        trainset, forgetset = torch.utils.data.random_split(trainset, (len(trainset) - forgetset_size, forgetset_size))
+        original_trainset = trainset
+        trainset, forgetset = torch.utils.data.random_split(original_trainset, (len(original_trainset) - forgetset_size, forgetset_size))
+
+        # forgetset = Subset(original_trainset, range(forgetset_size))
+        # trainset = Subset(original_trainset, range(forgetset_size, len(original_trainset)))
 
     # Load dataset
     trainloader = DataLoader(trainset, batch_size=batch_size, num_workers=num_workers, sampler=MultiplicitySampler(trainset, augmentation_multiplicity))
