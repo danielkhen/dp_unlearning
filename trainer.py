@@ -42,7 +42,7 @@ def train(model, train_loader, test_loader, criterion, optimizer, weights_path, 
                     #epoch_loss, forget_epoch_loss, epoch_accuracy, forget_epoch_accuracy = orthograd_unlearn(model, train_loader, forget_loader, criterion, lr)
                     #epoch_loss, forget_epoch_loss, epoch_accuracy, forget_epoch_accuracy = fim_unlearn(model, train_loader, forget_loader, criterion, optimizer, initial_params, fisher_diag)
                     # Uncomment the next line to use NegGrad instead of FIM unlearning
-                    epoch_loss, forget_epoch_loss, epoch_accuracy, forget_epoch_accuracy = neg_grad(model, train_loader, forget_loader, criterion, optimizer, mode='descent')
+                    epoch_loss, forget_epoch_loss, epoch_accuracy, forget_epoch_accuracy = neg_grad(model, train_loader, forget_loader, criterion, optimizer, mode='both')
                 else:
                     epoch_loss, epoch_accuracy = train_epoch(model, train_loader, criterion, optimizer, accumulation_steps=accumulation_steps)
 

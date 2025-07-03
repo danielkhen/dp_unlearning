@@ -165,3 +165,42 @@ Figure 5 | A bar chart showing the test accuracies of ViT-Tiny on different para
 
 ![Unlearn Loss](assets/unlearning_comparison2.png)
 Figure 6 | A plot chart showing the test accuracies of ViT-Tiny on different parameter counts with different unlearning algorithms.
+
+
+#### Further generalizations
+The following experiments all use NegGrad+ for unlearning tasks.
+Random forgetting forget set size comparison on CIFAR10:
+| Setup | Forget set size | ViT-Tiny | ViT-Tiny(LoRa Rank=16) |
+|---|---|---|---|
+| Regular training | | 88.02 | 88.4 |
+| Random Forgetting | 10000 | 66.89 | 78.56 |
+| Random Forgetting | 20000 | 57.06 | 78.02 |
+| Random Forgetting | 40000 | 36.52 | 59.23 |
+
+Resnet18 forgetting comparison on CIFAR10 (with forget set size of 10000):
+| Setup | Resnet18 | Resnet18(LoRa Rank~=16) |
+|---|---|---|
+| Regular training | 87.97 | 87.20 |
+| Random Forgetting | 58.20 | 75.93 |
+| Class Forgetting | 59.40 | 72.46 |
+* LoRa Rank~=16 as residual networks work bad with a constant rank for all layers, the biggest and last layer has rank 16 and the previous layers have lower ranks.
+
+WideResnet-16-4 forgetting comparison on CIFAR100 (with forget set size of 1000):
+| Setup | Resnet18 | Resnet18(LoRa Rank~=16) |
+|---|---|---|
+| Regular training | 73.44 | 69.15 |
+| Random Forgetting | 44.43 | 60.53 |
+* LoRa model has lower accuracy because lack of hyperparameter optimization.
+
+Overall the tests above generalize the idea that LoRa benefits unlearning tasks for a range of forget set sizes, models, random and class forgetting and datasets (as well as algorithms tested before).
+
+Additional observations:
+- ViT-Tiny hessian top eigenvalues are 39.5, 24.8 and 16 compared to 18.1, 17.9 and 13.7 in ViT-Tiny(LoRa Rank=16).
+- In almost all model parameters, average gradient similarity was higher in the ViT-Tiny model.
+- When initializing weights to zero on the LoRa models, the model can't escape the random choice accuracy.
+- Tried to use SAM to limit overfitting, didn't really help close the train test gap and thus didn't help with unlearning.
+
+Future experiments:
+- Look at hessian eigenvalues density.
+- Try to obtain an overfitting reduction without LoRa and test unlearning.
+- Bigger datasets like ImageNet.
