@@ -20,6 +20,7 @@ parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
 parser.add_argument('model', type=str, help='model architecture name')
 parser.add_argument('output', type=str, help='path of pth file to save model weights to')
 
+parser.add_argument('--seed', '-s', default=42, help='The seed for pytorch random generator')
 parser.add_argument('--test', '-t', action='store_true', help='only show previous training results for input model')
 parser.add_argument('--learning-rate', '--lr', default=1e-1, type=float, help='learning rate')
 parser.add_argument('--batch-size', '--bs', default=128, type=int, help='batch size')

@@ -34,7 +34,7 @@ def load_dataset(dataset, dataset_transform, testset_transform, batch_size, num_
     
     if unlearning:
         original_trainset = trainset
-        trainset, forgetset = torch.utils.data.random_split(original_trainset, (len(original_trainset) - forgetset_size, forgetset_size))
+        trainset, forgetset = torch.utils.data.random_split(original_trainset, (len(original_trainset) - forgetset_size, forgetset_size), generator=torch.Generator().manual_seed(static.SPLIT_SEED))
 
         # forgetset = Subset(original_trainset, range(forgetset_size))
         # trainset = Subset(original_trainset, range(forgetset_size, len(original_trainset)))

@@ -91,6 +91,7 @@ def load_model(args):
     return model
 
 def main(config = {}):
+    torch.manual_seed(args.seed)
     args.__dict__.update(config)
 
     if args.load_after_peft:

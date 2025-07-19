@@ -4,7 +4,7 @@ warnings.simplefilter("ignore")
 import torch
 from torchvision import transforms
 
-torch.manual_seed(69)
+SPLIT_SEED = 42
 
 CPU = torch.device('cpu')
 CUDA = torch.device('cuda')
