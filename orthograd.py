@@ -104,34 +104,25 @@ class GradBase:
         ) -> torch.Tensor:
             target = target.unsqueeze(0)
             batch = sample.unsqueeze(0)
-            if isinstance(model, (WhisperForConditionalGeneration, PeftModel)):
-                predictions = functional_call(model, (params, buffers), (batch, target))
-                # logits = predictions.logits
-                #
-                # # Calculate loss
-                # shift_logits = logits[:, :-1, :].contiguous()
-                # shift_labels = target[:, 1:].contiguous()
-                # loss = self.loss(shift_logits.view(-1, logits.size(-1)), shift_labels.view(-1))
-                loss = predictions.loss
+            
+            predictions = functional_call(model, (params, buffers), (batch,))
+            # todo: we can inherit from whisper and modify forward
+
+            if isinstance(self.loss, CrossEntropyLoss):
+                loss = self.loss(predictions, target)
+
+            elif isinstance(self.loss, DistillKL):
+                assert original_model != None, "The original model is not defined"
+                with torch.no_grad():
+                    target_logits = functional_call(
+                        original_model,
+                        (original_params, original_buffers),
+                        (batch,),
+                    )
+                loss = self.loss(predictions, target_logits)
+
             else:
-                predictions = functional_call(model, (params, buffers), (batch,))
-                # todo: we can inherit from whisper and modify forward
-
-                if isinstance(self.loss, CrossEntropyLoss):
-                    loss = self.loss(predictions, target)
-
-                elif isinstance(self.loss, DistillKL):
-                    assert original_model != None, "The original model is not defined"
-                    with torch.no_grad():
-                        target_logits = functional_call(
-                            original_model,
-                            (original_params, original_buffers),
-                            (batch,),
-                        )
-                    loss = self.loss(predictions, target_logits)
-
-                else:
-                    raise ValueError(f"Invalid loss function {self.loss}")
+                raise ValueError(f"Invalid loss function {self.loss}")
 
             return loss
 
@@ -147,7 +138,7 @@ class GradBase:
 
             return loss, grads
 
-        ft_compute_sample_grad = vmap(compute_loss_and_grad, in_dims=(None, None, 0, 0))
+        ft_compute_sample_grad = vmap(compute_loss_and_grad, in_dims=(None, None, 0, 0), randomness='same')
         per_sample_loss, per_sample_grads = ft_compute_sample_grad(
             params, buffers, data, labels
         )

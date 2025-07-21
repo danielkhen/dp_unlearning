@@ -204,3 +204,10 @@ Future experiments:
 - Look at hessian eigenvalues density.
 - Try to obtain an overfitting reduction without LoRa and test unlearning.
 - Bigger datasets like ImageNet.
+
+| Setup | ViT-Tiny | ViT-Tiny(LoRa Rank~=16) |
+|---|---|---|
+| FineTune | 84.1 ± 0.13 | 86.95 ± 0.06 |
+| NegGrad+ | 63.82 ± 0.54 | 76.97 ± 0.16 |
+| GDR-GMA | 83.52 ± 0.54 | 86.54 ± 0.15 |
+| OrthoGrad | 80.95 ± 0.16 | 87.88 ± 0.07 |
